@@ -1,6 +1,6 @@
 # ML Reliability
 
-`ml-reliabilty` is a Python library for building and using machine-learning
+`ReliableML` is a Python library for building and using machine-learning
 models with reliability checks alongside their predictions. It complements
 [ATTP](https://github.com/Jabualani/ATTP): use ATTP (or another preprocessing
 tool) to prepare the data, then pass the prepared features and your chosen
