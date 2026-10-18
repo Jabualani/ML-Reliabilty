@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/ml-reliability
+      url: https://pypi.org/p/ml-reliabilty
     permissions:
       id-token: write
     steps:
