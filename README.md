@@ -370,12 +370,12 @@ or `predict_with_report(X)` to get both.
 
 GitHub Actions tests the package on Python 3.10–3.14 for pushes and pull
 requests to `main`, and builds and validates wheel/source distributions. To
-publish a release, configure a PyPI trusted publisher for this GitHub
-repository, workflow file `.github/workflows/publish.yml`, and GitHub
-environment `pypi`. Then publish a GitHub release whose tag matches the
-version in `pyproject.toml` (for example, `v0.1.0`). The workflow publishes
-the built distributions using PyPI's OIDC trusted-publishing flow; no PyPI
-token is stored in GitHub secrets.
+publish, configure a PyPI trusted publisher for this GitHub repository,
+workflow file `.github/workflows/publish.yml`, and GitHub environment `pypi`.
+Set `PACKAGE_VERSION` in that workflow to the version to publish, then run
+**Test and publish to PyPI** manually from the Actions tab on the `main`
+branch. The workflow uses PyPI's OIDC trusted-publishing flow; no PyPI token
+is stored in GitHub secrets. A GitHub Release is not required.
 
 ## Distribution visualizations and confidence intervals
 
