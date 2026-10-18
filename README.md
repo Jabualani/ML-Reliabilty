@@ -366,6 +366,17 @@ assessment.
 predictions only. Use `assess_reliability(X)` for a report without predictions,
 or `predict_with_report(X)` to get both.
 
+## Publishing to PyPI
+
+GitHub Actions tests the package on Python 3.10–3.14 for pushes and pull
+requests to `main`, and builds and validates wheel/source distributions. To
+publish a release, configure a PyPI trusted publisher for this GitHub
+repository, workflow file `.github/workflows/publish.yml`, and GitHub
+environment `pypi`. Then publish a GitHub release whose tag matches the
+version in `pyproject.toml` (for example, `v0.1.0`). The workflow publishes
+the built distributions using PyPI's OIDC trusted-publishing flow; no PyPI
+token is stored in GitHub secrets.
+
 ## Distribution visualizations and confidence intervals
 
 Seaborn is installed with the library. By default, `fit()` saves a statistical
