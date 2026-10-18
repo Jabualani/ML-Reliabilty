@@ -9,7 +9,7 @@ description = "Tools for assessing machine-learning reliability alongside predic
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{ name = "Jabualani" }]
+authors = [{ name = "Jabulani Monchwe" }]
 dependencies = [
     "numpy>=1.23",
     "scikit-learn>=1.3",

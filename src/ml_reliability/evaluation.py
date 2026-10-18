@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from numbers import Real
 from typing import Any, Mapping
 
+import numpy as np
 from scipy.stats import chi2_contingency, f_oneway
 from statsmodels.multivariate.manova import MANOVA
 
@@ -373,6 +374,20 @@ def _manova(
     if len(valid_rows) <= len(feature_names) + len(group_values):
         return _unavailable("Insufficient complete observations for MANOVA.")
 
+    grouped_values: dict[str, list[list[float]]] = {}
+    for group, values in valid_rows:
+        grouped_values.setdefault(group, []).append(values)
+    residual_rows = []
+    for values in grouped_values.values():
+        group_matrix = np.asarray(values, dtype=float)
+        residual_rows.extend(group_matrix - group_matrix.mean(axis=0))
+    residual_matrix = np.asarray(residual_rows, dtype=float)
+    if np.linalg.matrix_rank(residual_matrix) < len(feature_names):
+        return _unavailable(
+            "MANOVA residual covariance is singular; dependent features or "
+            "insufficient within-group variation prevent a stable multivariate test."
+        )
+
     frame = pd.DataFrame(
         [
             [*values, group]
@@ -386,9 +401,12 @@ def _manova(
     response_formula = " + ".join(
         f"feature_{index}" for index in range(len(feature_names))
     )
-    result = MANOVA.from_formula(
-        f"{response_formula} ~ C(group)", data=frame
-    ).mv_test()
+    try:
+        result = MANOVA.from_formula(
+            f"{response_formula} ~ C(group)", data=frame
+        ).mv_test()
+    except (np.linalg.LinAlgError, ValueError) as error:
+        return _unavailable(f"MANOVA could not estimate a stable test: {error}")
     term = "C(group)"
     if term not in result.results:
         return _unavailable("MANOVA could not construct the cohort/class effect.")

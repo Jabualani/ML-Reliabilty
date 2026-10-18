@@ -384,7 +384,7 @@ class DriftMonitorTests(unittest.TestCase):
         manova = _manova(
             {
                 "first": [0.0, 0.2, 1.0, 1.2, 2.0, 2.2, 0.1, 1.1, 2.1],
-                "second": [0.1, 0.3, 1.1, 1.3, 2.1, 2.3, 0.2, 1.2, 2.2],
+                "second": [0.1, 0.5, 0.2, 0.8, 0.4, 1.0, 0.3, 0.6, 0.9],
             },
             ["a", "a", "b", "b", "c", "c", "a", "b", "c"],
             "target_class",
@@ -395,7 +395,20 @@ class DriftMonitorTests(unittest.TestCase):
         )
         self.assertEqual(manova["status"], "ok")
         self.assertEqual(manova["group_count"], 3)
-        self.assertEqual(manova["numerator_df"], 2.0)
+        self.assertEqual(manova["numerator_df"], 4.0)
+
+    def test_manova_reports_singular_residual_covariance_as_unavailable(self):
+        result = _manova(
+            {
+                "first": [0.0, 0.2, 1.0, 1.2, 2.0, 2.2, 0.1, 1.1, 2.1],
+                "dependent": [0.1, 0.3, 1.1, 1.3, 2.1, 2.3, 0.2, 1.2, 2.2],
+            },
+            ["a", "a", "b", "b", "c", "c", "a", "b", "c"],
+            "target_class",
+        )
+
+        self.assertEqual(result["status"], "unavailable")
+        self.assertIn("residual covariance is singular", result["reason"])
 
     def test_fairness_reports_three_parity_metrics_and_bootstrap_intervals(self):
         report = assess_fairness(
