@@ -1,0 +1,87 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Statistical Reason Audit}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The reason audit combines labeled validity, perturbation-based feature
+reliance, subgroup and time stability, counterfactual sensitivity, logistic
+associations, and explanation alignment. It investigates potential
+shortcuts; it does not prove causality or correct reasons.
+\end{abstract}
+
+\section{Audit design}
+Use labeled, representative holdout rows not used for fitting or model
+selection, plus training/reference background data. The report includes
+bootstrap intervals for predictive measures such as accuracy, multiclass
+Brier score, and top-label calibration error. This addresses whether
+predictions perform adequately on the evaluated sample, independently of
+what explanation methods say.
+
+\section{Feature reliance}
+For each feature, the audit perturbs held-out values using donor rows and
+measures the increase in held-out Brier loss. Conditional donor selection can
+use nearest neighbors over user-specified numeric covariates; this is a
+conditional-distribution approximation and can fail in sparse regions.
+Without conditional covariates, marginal perturbation may construct
+unrealistic combinations when features are correlated. Bootstrap intervals
+and repeated estimates quantify sampling variability but not all sources of
+uncertainty.
+
+\section{Stability and sensitivity}
+Optional groups and time periods report reliance across slices. Optional
+counterfactual replacements report prediction-flip rates and probability
+changes. The user is responsible for supplying domain-valid changes; arbitrary
+edits do not represent plausible interventions. Negative-control features
+and features unavailable at prediction time produce warnings, not definitive
+proof of leakage or shortcut learning.
+
+\section{Association and explanation alignment}
+For binary or selected one-vs-rest outcomes, an unregularized logistic model
+reports standardized-feature odds ratios, confidence intervals, p-values, and
+Benjamini--Hochberg adjusted p-values. These quantify conditional associations
+with observed labels. The audit can compare row-level signed Shapley
+contributions with logistic log-odds contributions and compare supplied
+importance mappings with global Shapley ranks. Agreement is not a test of
+causality and can occur under confounding or shared bias.
+
+\section{Interpretation}
+No single score in the audit certifies correct-for-correct-reasons prediction.
+Conclusions depend on holdout representativeness, label quality, measurement,
+feature availability, dependence structure, calibration, and causal/domain
+knowledge. Current bootstrap procedures treat rows as independent; grouped
+or time-dependent data may need block or cluster resampling. Audits are
+computationally intensive because they repeatedly perturb data and evaluate
+the model.
+
+\section{Interface}
+\begin{verbatim}
+audit = model.audit_reasons(
+    X_holdout, y_holdout, positive_label=1,
+    conditional_on=["age", "region"],
+    groups={"sex": sex_holdout},
+    time_periods=month_holdout,
+    counterfactuals={"income": plausible_income_changes},
+)
+print(audit.predictive_validity)
+print(audit.feature_reliance)
+print(audit.logistic_association)
+\end{verbatim}
+
+\section{Further reading}
+\begin{thebibliography}{3}
+\bibitem{shap}
+S. M. Lundberg and S.-I. Lee. A unified approach to interpreting model
+predictions. \emph{Advances in Neural Information Processing Systems}, 2017.
+\url{https://arxiv.org/abs/1705.07874}.
+\bibitem{hardt}
+M. Hardt, E. Price, and N. Srebro. Equality of opportunity in supervised
+learning. \emph{Advances in Neural Information Processing Systems}, 2016.
+\url{https://arxiv.org/abs/1610.02413}.
+\bibitem{reliability}
+\software{} reason audit assumptions and interfaces:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

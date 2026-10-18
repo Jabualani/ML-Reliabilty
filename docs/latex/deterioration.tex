@@ -1,0 +1,58 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Model Deterioration over Time}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The deterioration method summarizes labeled prediction batches by accuracy,
+fits a linear accuracy trend over time, and bootstraps within-batch rows to
+estimate uncertainty in the slope.
+\end{abstract}
+
+\section{Data and estimand}
+Each history record contains a timestamp, true labels, and predictions. At
+least three distinct dates are required. Timestamps must be consistently
+numeric or ISO date/time values. The method computes one accuracy observation
+per batch, sorts the observations by time, and fits a simple linear regression
+of accuracy on time. Each batch contributes one equally weighted point,
+regardless of its row count.
+
+\section{Bootstrap and flag}
+Within every batch, row indices are resampled with replacement and accuracy
+is recalculated. The linear slope is refit across dates for each bootstrap
+replicate. The report returns the observed slope, a percentile confidence
+interval, the regression p-value, and the number of bootstrap samples. A
+deterioration flag is raised only when the entire bootstrap slope interval is
+below zero.
+
+\section{Limitations}
+This is a descriptive temporal association, not a causal attribution to the
+model. It does not adjust for case-mix changes, operational changes, label
+delay, changing evaluation protocols, or serial dependence. The
+within-batch bootstrap assumes independent rows; clustered or temporal
+dependence can require block resampling. Use consistent, representative
+labeling and inspect both batch sizes and subgroup performance.
+
+\section{Interface}
+\begin{verbatim}
+history = [
+    {"timestamp": "2026-01-01", "y_true": y_jan, "y_pred": pred_jan},
+    {"timestamp": "2026-02-01", "y_true": y_feb, "y_pred": pred_feb},
+    {"timestamp": "2026-03-01", "y_true": y_mar, "y_pred": pred_mar},
+]
+report = model.assess_deterioration(history)
+print(report.accuracy_slope, report.slope_confidence_interval)
+\end{verbatim}
+
+\section{Further reading}
+\begin{thebibliography}{2}
+\bibitem{gama}
+J. Gama et al. A survey on concept drift adaptation. \emph{ACM Computing
+Surveys}, 46(4), 2014. \url{https://doi.org/10.1145/2523813}.
+\bibitem{reliability}
+\software{} deterioration protocol:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

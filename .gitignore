@@ -3,3 +3,4 @@ reliability_plots/
 __pycache__/
 *.py[cod]
 *.egg-info/
+docs/latex/build/

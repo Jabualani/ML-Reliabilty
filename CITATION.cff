@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use ReliableML in your research, please cite this software."
+title: ReliableML
+abstract: >-
+  ReliableML is a Python library for building and assessing machine-learning
+  systems with distribution-shift monitoring, labeled model evaluation,
+  fairness metrics, model-deterioration analysis, meta-learning classifiers,
+  model-agnostic explanations, and statistical reason audits.
+type: software
+authors:
+  - family-names: Monchwe
+    given-names: Jabulani
+    email: MonchweJ.25@gmail.com
+  - family-names: Motitswane
+    given-names: Olorato
+    email: oloratomotitswane@gmail.com
+  - family-names: Monchwe
+    given-names: Mfundo
+    email: diditmfundo@gmail.com
+version: 0.1.1
+date-released: 2026-10-18
+url: https://github.com/Jabualani/ML-Reliabilty
+repository-code: https://github.com/Jabualani/ML-Reliabilty
+license: MIT

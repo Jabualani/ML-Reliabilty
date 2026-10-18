@@ -1,0 +1,72 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Classification and Statistical Evaluation}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+Labeled evaluation separates predictive performance from input-distribution
+monitoring. The report combines classification metrics, association tests,
+train--test comparisons, and an empirical repeated-cross-validation
+bias--variance summary.
+\end{abstract}
+
+\section{Classification performance}
+\code{evaluate(X\_test, y\_test)} predicts on the supplied rows and compares
+predictions with true labels. The classification summary includes a confusion
+matrix, accuracy, balanced accuracy, per-class precision, recall, specificity
+and F1, macro/support-weighted summaries, and multiclass Matthews correlation
+coefficient (MCC). The confusion matrix and class denominators help expose
+class imbalance concealed by aggregate accuracy.
+
+\section{Statistical tests}
+The report keeps two questions distinct:
+\begin{enumerate}
+  \item \textbf{Feature--target association:} ANOVA for numeric features,
+  joint MANOVA when suitable, and chi-square tests for categorical features
+  across target classes.
+  \item \textbf{Training versus test:} ANOVA and joint MANOVA for numeric
+  features, and chi-square homogeneity tests for categorical features.
+\end{enumerate}
+Results contain statistics, p-values, degrees of freedom where applicable,
+and cautions or an explicit unavailable reason. A rank-deficient MANOVA
+residual covariance is reported as unavailable rather than forced into a
+singular matrix solution.
+
+\section{Empirical bias--variance}
+An optional repeated stratified cross-validation procedure estimates a
+finite-sample decomposition of one-hot/Brier prediction error. Probability
+outputs are preferred; hard predictions are one-hot encoded as a fallback.
+The default five folds and five repeats imply 25 refits, with fewer folds
+when the smallest class requires it. The result is not a population
+irreducible-noise estimate and can be computationally expensive.
+
+\section{Assumptions and interpretation}
+Statistical tests require adequate sample sizes, complete observations where
+required, and their usual distributional assumptions. The tests describe
+associations and cohort differences; small p-values are not causal evidence.
+P-values are sensitive to sample size and multiple testing. Analyze test data
+that is representative and held out from model selection. For repeated,
+grouped, or temporal observations, ordinary independent-row uncertainty
+estimates may be too narrow.
+
+\section{Interface}
+\begin{verbatim}
+evaluation = model.evaluate(X_test, y_test)
+print(evaluation.classification["matthews_correlation_coefficient"])
+print(evaluation.classification["confusion_matrix"])
+print(evaluation.statistical_tests)
+\end{verbatim}
+
+\section{Further reading}
+\begin{thebibliography}{2}
+\bibitem{mcc}
+B. W. Matthews. Comparison of the predicted and observed secondary structure
+of T4 phage lysozyme. \emph{Biochimica et Biophysica Acta}, 405(2), 1975.
+\url{https://doi.org/10.1016/0005-2795(75)90109-9}.
+\bibitem{reliability}
+\software{} implementation and evaluation protocol:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

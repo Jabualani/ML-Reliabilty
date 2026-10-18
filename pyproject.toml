@@ -4,12 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ReliableML"
-version = "0.1.0"
+version = "0.1.1"
 description = "Tools for assessing machine-learning reliability alongside predictions."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{ name = "Jabulani Monchwe" }]
+authors = [
+    { name = "Jabulani Monchwe", email = "MonchweJ.25@gmail.com" },
+    { name = "Olorato Motitswane", email = "oloratomotitswane@gmail.com" },
+    { name = "Mfundo Monchwe", email = "diditmfundo@gmail.com" },
+]
+maintainers = [{ name = "Jabulani Monchwe", email = "MonchweJ.25@gmail.com" }]
 dependencies = [
     "numpy>=1.23",
     "scikit-learn>=1.3",

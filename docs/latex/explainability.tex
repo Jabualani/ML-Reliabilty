@@ -1,0 +1,75 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Global and Local Explanations}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The tabular explainer compares a Monte Carlo permutation estimate of
+interventional Shapley contributions with local weighted linear surrogate
+weights in the style of LIME. Global summaries aggregate absolute
+contributions over selected rows; local reports describe individual model
+outputs.
+\end{abstract}
+
+\section{Inputs and outputs}
+The fitted estimator must provide \code{predict}, \code{predict\_proba}, and
+\code{classes\_}. Explanations require finite numeric features, at least two
+columns, and reference/background data. Binary explanations default to the
+positive class; multiclass use requires a selected class. \code{X} and
+background data must use the same feature schema.
+
+The global summary is mean absolute Shapley value by feature over explained
+rows. Local results include signed Shapley contributions and LIME-style local
+surrogate weights. Reason alignment compares these methods using rank
+correlation, top-feature overlap, and sign agreement; bootstrap intervals can
+summarize rank agreement. An optional user-supplied global importance mapping
+is clearly distinguished from computed SHAP values. Optional exports include
+input columns, predictions, labels when supplied, and per-row top
+contributing features in CSV or supported serialized formats.
+
+\section{Methods}
+The Shapley approximation samples feature permutations and compares model
+probabilities along each permutation against a reference background. Its
+Monte Carlo error depends on sample count and feature dependence. The local
+surrogate perturbs observations, weights nearby samples, and fits a local
+linear explanation; fidelity depends on the perturbation and neighborhood
+design. These are model-behavior explanations, not tests of causal effects.
+
+\section{Interpretation and limits}
+Agreement between attribution methods indicates explanation consistency
+under their respective approximations. It does not demonstrate that a
+prediction is correct, that features are valid reasons, or that no spurious
+correlation is present. Explanations can be sensitive to background choice,
+correlated features, perturbation realism, and model probability quality.
+Use representative labeled holdout evaluation, subgroup/time analysis,
+leakage checks, calibration, realistic counterfactuals, and domain review.
+Causal claims require a defensible causal model and assumptions.
+
+\section{Interface}
+\begin{verbatim}
+report = model.explain(X_test, class_label=1)
+print(report.global_shap_importance)
+print(report.local_explanations[0])
+print(report.reason_alignment)
+\end{verbatim}
+An already-fitted external estimator can be passed to
+\code{explain\_estimator}; labels are optional for explanations and required
+only for the optional descriptive label evaluation.
+
+\section{Further reading}
+\begin{thebibliography}{3}
+\bibitem{shap}
+S. M. Lundberg and S.-I. Lee. A unified approach to interpreting model
+predictions. \emph{Advances in Neural Information Processing Systems}, 2017.
+\url{https://arxiv.org/abs/1705.07874}.
+\bibitem{lime}
+M. T. Ribeiro, S. Singh, and C. Guestrin. ``Why should I trust you?''
+Explaining the predictions of any classifier. \emph{Proceedings of KDD},
+2016. \url{https://doi.org/10.1145/2939672.2939778}.
+\bibitem{reliability}
+\software{} explanation implementation:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

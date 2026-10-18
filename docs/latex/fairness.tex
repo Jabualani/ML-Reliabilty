@@ -1,0 +1,65 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Group Fairness Metrics}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The fairness assessment compares observed classification rates across
+user-supplied protected groups. It reports statistical parity,
+equalized-odds, and predictive-parity gaps with denominators and bootstrap
+intervals. The metrics are descriptive and do not select legal or
+application-specific thresholds.
+\end{abstract}
+
+\section{Inputs}
+Protected attributes are passed separately from model features to reduce the
+risk of accidentally training on them. True labels and model predictions
+must be row-aligned. Binary classification requires the user to specify the
+positive label. Multiclass evaluation uses one-vs-rest calculations for each
+observed/model class.
+
+\section{Rate comparisons}
+For each group, the assessment reports:
+\begin{description}
+  \item[Statistical parity:] the positive prediction or selection rate,
+  \(P(\widehat{Y}=1\mid A=a)\), and maximum-minus-minimum gap across groups.
+  \item[Equalized odds:] true-positive rates and false-positive rates
+  conditional on the true class, with separate max-minus-minimum group gaps.
+  \item[Predictive parity:] positive predictive value,
+  \(P(Y=1\mid \widehat{Y}=1,A=a)\), and the corresponding group gap.
+\end{description}
+Group denominators are essential: an undefined rate caused by no eligible
+observations is not interpreted as zero. Bootstrap intervals reflect
+resampling variation under the implemented independent-row bootstrap.
+
+\section{Interpretation}
+A zero observed gap means rates were equal in the supplied sample under the
+specified definitions; it is not proof of fairness, absence of harm, or
+compliance with law. Estimates can be unstable for small subgroups or rare
+outcomes. The three criteria can conflict, particularly when base rates
+differ. Examine uncertainty, sample composition, intersectional groups,
+measurement quality, and application-specific constraints before acting.
+
+\section{Interface}
+\begin{verbatim}
+evaluation = model.evaluate(
+    X_test, y_test,
+    sensitive_features={"group": protected_test},
+    positive_label=1,
+)
+print(evaluation.fairness)
+\end{verbatim}
+
+\section{Further reading}
+\begin{thebibliography}{2}
+\bibitem{hardt}
+M. Hardt, E. Price, and N. Srebro. Equality of opportunity in supervised
+learning. \emph{Advances in Neural Information Processing Systems}, 2016.
+\url{https://arxiv.org/abs/1610.02413}.
+\bibitem{reliability}
+\software{} definitions and bootstrap reporting:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

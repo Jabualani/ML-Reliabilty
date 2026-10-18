@@ -375,7 +375,20 @@ workflow file `.github/workflows/publish.yml`, and GitHub environment `pypi`.
 Set `PACKAGE_VERSION` in that workflow to the version to publish, then run
 **Test and publish to PyPI** manually from the Actions tab on the `main`
 branch. The workflow uses PyPI's OIDC trusted-publishing flow; no PyPI token
-is stored in GitHub secrets. A GitHub Release is not required.
+is stored in GitHub secrets. A GitHub Release is not required. Contributor
+and citation metadata is available in `pyproject.toml` and `CITATION.cff`.
+
+## Method documentation
+
+LaTeX source for the overall methodology and each implemented method family is
+in `docs/latex/`. Build standalone PDFs into `docs/pdfs/` with:
+
+```powershell
+python .\docs\latex\build_pdfs.py
+```
+
+The script uses Tectonic or `pdflatex` and fails explicitly if neither is
+installed.
 
 ## Distribution visualizations and confidence intervals
 

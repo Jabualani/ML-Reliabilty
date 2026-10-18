@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Meta-Learning Classifiers}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The meta-learning estimators transform predictions from a configurable pool
+of base classifiers into training features for a second-stage classifier.
+Cross-fitting supplies out-of-fold predictions during training to reduce
+target leakage from in-sample base-model outputs.
+\end{abstract}
+
+\section{Stacking procedure}
+Given training data \((X,y)\), stratified folds are created. In each fold,
+base candidates are fit on fold-training rows and produce aligned class
+probabilities for held-out rows. These out-of-fold outputs are joined as
+meta-features. The second-stage classifier is trained on those features and
+labels. At inference, fitted base learners produce the same feature layout,
+which is passed to the fitted meta-classifier. The user supplies base
+estimators; they can be ordinary scikit-learn classifiers.
+
+\section{Implemented estimators}
+\begin{description}
+  \item[\code{PerfMetaSelect}] Selects the candidate with the best mean
+  stratified cross-validation score, then refits it on all training data.
+  \item[\code{MetaFeatureTransformer}] Exposes class-aligned out-of-fold
+  probability features for use in a scikit-learn workflow.
+  \item[\code{MetaPipelineClassifier}] Fits the OOF meta-feature procedure
+  with a configurable final classifier.
+  \item[\code{CalibratedStackedClassifier}] Stacks OOF probabilities and
+  calibrates a second-stage estimator using sigmoid or isotonic calibration.
+  \item[\code{StatisticalMetaClassifier}] Builds statistical meta-features
+  and fits a logistic statistical model with selectable estimation and
+  nonlinear terms.
+  \item[\code{StatisticalMetaLDAClassifier}] Linear statistical variant
+  using discriminant projections and logistic estimation.
+  \item[\code{StatisticalMetaDTreeClassifier}] Nonlinear statistical variant
+  with optional tree meta-features and polynomial interactions.
+  \item[\code{StatisticalMetaNNClassifier}] Neural meta-network over LDA,
+  optional tree, and cluster-distance features; optional Monte Carlo dropout
+  estimates stochastic prediction variation.
+\end{description}
+Raw-feature importance methods are provided where supported by the estimator.
+The reported aggregate importance across base models is a descriptive
+frequency/importance summary, not causal importance.
+
+\section{Hyperparameter search and validation}
+\code{halving\_grid\_search} and \code{halving\_random\_search} wrap
+scikit-learn successive-halving search. Data-dependent preprocessing should
+be inside each candidate's estimator pipeline so it is refit within folds.
+Choose a scoring rule consistent with the task and use nested or otherwise
+separated validation when reporting final generalization performance.
+
+\section{Constraints}
+Statistical meta-classifiers and the neural statistical estimator currently
+support binary classification; general stacking wrappers may handle multiple
+classes when base learners support them. Inputs are finite numeric features.
+Fold counts must be appropriate for the smallest class. Cross-fitting
+reduces, but does not eliminate, selection bias; repeated tuning on the same
+holdout invalidates its role as an independent test. Persist the complete
+fitted pipeline so inference reproduces the meta-feature transform.
+
+\section{Interface}
+\begin{verbatim}
+meta = MetaPipelineClassifier(
+    base_estimators=candidates,
+    meta_classifier=LogisticRegression(max_iter=500),
+    n_folds=5,
+)
+meta.fit(X_train, y_train)
+predictions = meta.predict(X_test)
+\end{verbatim}
+
+\section{Further reading}
+\begin{thebibliography}{2}
+\bibitem{wolpert}
+D. H. Wolpert. Stacked generalization. \emph{Neural Networks}, 5(2), 1992.
+\url{https://doi.org/10.1016/S0893-6080(05)80023-1}.
+\bibitem{reliability}
+\software{} estimators and configuration:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

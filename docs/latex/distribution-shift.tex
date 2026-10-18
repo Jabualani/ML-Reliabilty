@@ -1,0 +1,73 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software{} Method Note: Distribution Shift and Drift}
+\author{\contactauthors}
+\date{Version 0.1.1}
+\begin{document}
+\maketitle
+\begin{abstract}
+The drift monitor compares incoming feature batches with the training
+reference. It supplies unlabeled input-distribution evidence and, separately,
+a labeled feature--target divergence diagnostic. Neither is a direct test of
+prediction correctness.
+\end{abstract}
+
+\section{Reference and incoming data}
+\code{DriftMonitor.fit(X\_train)} records profiles for each named feature.
+Incoming batches must preserve the fitted feature names, order, and compatible
+representation. Numerical profiles use reference quantile bins; categorical
+profiles retain observed categories and an unseen-category bucket. Missing,
+unseen, underflow, and overflow values are tracked separately where
+applicable.
+
+\section{Statistics}
+For numeric and categorical features, the report computes the population
+stability index (PSI) and smoothed Kullback--Leibler divergence on the fitted
+bins. Numeric features additionally receive a two-sample Kolmogorov--Smirnov
+statistic and one-dimensional Wasserstein distance when both batches contain
+finite observations. A library-defined Drift Score Index measures changes in
+mean, standard deviation, skewness, and excess kurtosis; scale changes are
+normalized by the reference standard deviation. Categorical changes use a
+Pearson chi-square homogeneity test over shared and unseen categories.
+
+The report can include bootstrap intervals for applicable metrics, drift
+flags, and aggregate summaries. Thresholds are user-configurable and should
+be validated against representative in-domain and shifted data. The
+PSI-derived \code{similarity\_score} is a descriptive transform, not a
+probability, calibrated confidence, or guarantee of model validity.
+
+\section{Feature--target divergence}
+With labels, the concept-shift diagnostic compares a univariate approximation
+of feature--target associations between a reference and incoming batch. This
+does not identify a causal mechanism and can miss changes in interactions or
+conditional relationships. It is a separate labeled analysis, not part of
+the unlabeled inference-time drift score.
+
+\section{Operations and limitations}
+Numeric KS and Wasserstein calculations exclude missing and nonnumeric
+observations. Categorical chi-square approximations can be unreliable with
+small expected counts. Bootstrap intervals assume the implemented row
+resampling scheme; dependent observations may require block or cluster
+bootstrap. Distribution changes can be benign, and stable marginals can hide
+conditional drift. Evaluate performance on labeled, representative holdout
+data before operational decisions.
+
+\section{Interface}
+\begin{verbatim}
+monitor = DriftMonitor().fit(X_train)
+report = monitor.assess(X_incoming)
+print(report.to_dict())
+\end{verbatim}
+Through \code{ReliablePipeline}, the same fitted reference profile is used
+when predicting and reporting on unseen feature batches.
+
+\section{Further reading}
+\begin{thebibliography}{2}
+\bibitem{gama}
+J. Gama et al. A survey on concept drift adaptation. \emph{ACM Computing
+Surveys}, 46(4), 2014. \url{https://doi.org/10.1145/2523813}.
+\bibitem{reliability}
+\software{} implementation and documented formulas:
+\url{https://github.com/Jabualani/ML-Reliabilty}.
+\end{thebibliography}
+\end{document}

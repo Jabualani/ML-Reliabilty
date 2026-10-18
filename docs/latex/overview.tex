@@ -1,0 +1,118 @@
+\documentclass[11pt]{article}
+\input{preamble}
+\title{\software: Methods for Reliable Machine-Learning Workflows}
+\author{\contactauthors\\\small MonchweJ.25@gmail.com}
+\date{Version 0.1.1 \quad 18 October 2026}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\software{} is a Python library for attaching data-distribution monitoring,
+labeled evaluation, fairness summaries, model-deterioration tracking,
+meta-learning, model-agnostic explanations, and statistical reason auditing
+to machine-learning workflows. This document summarizes the implemented
+methods, their interfaces, and their limits. Its central methodological
+qualification is that reliability is not a single scalar: distribution
+similarity, predictive performance, calibration, subgroup disparities,
+temporal trends, and explanatory stability answer different questions and
+must be interpreted separately.
+\end{abstract}
+
+\section{Scope and workflow}
+Reliable model development begins with appropriate data preparation. Users
+may prepare data with ATTP or another tool; \software{} accepts the resulting
+features and a user-selected estimator. The library does not claim that
+preprocessing, a high validation score, or an explanation by itself guarantees
+reliable deployment.
+
+The operating workflow is:
+\begin{enumerate}
+  \item Fit a model and capture a reference profile of training features.
+  \item Predict on incoming features and compare their distributions with the
+        reference, optionally saving plots and machine-readable reports.
+  \item When labels become available, evaluate predictive quality, calibration,
+        statistical associations, and fairness on representative labeled data.
+  \item Across dated labeled batches, estimate an accuracy trend.
+  \item Where appropriate, use out-of-fold meta-learning, local/global
+        explanations, and a holdout reason audit to investigate stability and
+        reliance.
+\end{enumerate}
+
+\section{Implemented method families}
+\begin{description}
+  \item[Distribution shift.] Quantile-binned numerical drift statistics,
+  categorical homogeneity tests, reference plots, and a labeled
+  feature--target divergence diagnostic.
+  \item[Evaluation.] Classification metrics including multiclass Matthews
+  correlation, confusion counts, feature--target and train--test ANOVA,
+  MANOVA and chi-square tests, and an empirical repeated-CV Brier
+  bias--variance decomposition.
+  \item[Fairness.] Statistical-parity selection-rate, equalized-odds
+  true-/false-positive-rate, and predictive-parity positive-predictive-value
+  gaps, with group denominators and bootstrap intervals.
+  \item[Deterioration.] A linear trend in accuracy across at least three dated,
+  labeled batches and a bootstrap interval for the slope.
+  \item[Meta-learning.] Cross-fitted base-model meta-features and selectable,
+  calibrated, statistical, and neural meta-classifiers. Halving grid and
+  randomized search helpers are provided.
+  \item[Explainability.] A Monte Carlo permutation estimator of interventional
+  Shapley contributions and a LIME-style local weighted linear surrogate.
+  \item[Reason audit.] Holdout validity, calibration, perturbation-based
+  feature reliance, stability slices, counterfactual sensitivity, logistic
+  association, and explanation-alignment diagnostics.
+  \item[Pipeline and persistence.] A scikit-learn-style wrapper stores an
+  estimator and its fitted monitoring profile, reports prediction-time drift,
+  and supports model persistence and exports.
+\end{description}
+
+\section{Interpreting evidence}
+Each method has different data requirements. Drift monitoring can be
+unlabeled, but it does not establish that predictions are wrong. Performance,
+calibration, fairness, and deterioration assessment require labels and
+appropriate sampling. Counterfactual sensitivity is only meaningful when
+replacement values are domain-valid. Explanation agreement measures
+consistency, not truth or causality. Logistic odds ratios describe
+conditional associations, not causal effects.
+
+Bootstrap intervals quantify sampling variation under their resampling
+assumptions. Current intervals generally treat rows as independent; clustered
+or time-dependent data may need cluster or block methods. Reported statistics
+should be considered alongside data provenance, leakage checks, temporal and
+group-aware validation, and domain review. See the standalone method
+documents for operational details and assumptions.
+
+\section{Minimal usage}
+\begin{verbatim}
+from ml_reliability import ReliablePipeline
+
+model = ReliablePipeline(estimator=classifier).fit(X_train, y_train)
+predictions, report = model.predict_with_report(X_test)
+evaluation = model.evaluate(X_test, y_test)
+model.save("reliable-model.pkl")
+\end{verbatim}
+The same fitted pipeline can be reloaded and used with input data in the
+original feature schema. Pickle files must only be loaded from trusted sources.
+
+\section{References}
+\begin{thebibliography}{9}
+\bibitem{gama}
+J. Gama, I. Zliobaite, A. Bifet, M. Pechenizkiy, and A. Bouchachia.
+ A survey on concept drift adaptation. \emph{ACM Computing Surveys},
+ 46(4), 2014. \url{https://doi.org/10.1145/2523813}.
+\bibitem{wolpert}
+D. H. Wolpert. Stacked generalization. \emph{Neural Networks}, 5(2),
+  1992. \url{https://doi.org/10.1016/S0893-6080(05)80023-1}.
+\bibitem{hardt}
+M. Hardt, E. Price, and N. Srebro. Equality of opportunity in supervised
+  learning. \emph{Advances in Neural Information Processing Systems}, 2016.
+  \url{https://arxiv.org/abs/1610.02413}.
+\bibitem{lime}
+M. T. Ribeiro, S. Singh, and C. Guestrin. ``Why should I trust you?''
+  Explaining the predictions of any classifier. \emph{Proceedings of KDD},
+  2016. \url{https://doi.org/10.1145/2939672.2939778}.
+\bibitem{shap}
+S. M. Lundberg and S.-I. Lee. A unified approach to interpreting model
+  predictions. \emph{Advances in Neural Information Processing Systems}, 2017.
+  \url{https://arxiv.org/abs/1705.07874}.
+\end{thebibliography}
+\end{document}
