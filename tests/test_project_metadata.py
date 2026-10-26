@@ -16,6 +16,7 @@ class ProjectMetadataTests(unittest.TestCase):
             elif in_project_urls and "=" in line:
                 name = line.partition("=")[0].strip().strip('"')
                 self.assertNotIn(",", name)
+                self.assertLessEqual(len(name), 32, f"PyPI limits URL labels to 32 characters: {name!r}")
 
 
 if __name__ == "__main__":
