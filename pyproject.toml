@@ -33,7 +33,7 @@ Homepage = "https://github.com/Jabualani/ML-Reliabilty"
 Repository = "https://github.com/Jabualani/ML-Reliabilty"
 "Google Scholar" = "https://scholar.google.com/citations?user=DqA_HV4AAAAJ&hl=en"
 LinkedIn = "https://www.linkedin.com/in/jabulani-monchwe-7a145117a/"
-"Stats, Math & ML Research Group" = "https://chat.whatsapp.com/KLB5zk5w7xVIJHaM65KxPa"
+"Stats Math & ML Research Group" = "https://chat.whatsapp.com/KLB5zk5w7xVIJHaM65KxPa"
 "IDEA-Research Club WhatsApp Group" = "https://chat.whatsapp.com/FOIpSTDLH0X6E6CIL6IZfn"
 
 [tool.setuptools.packages.find]
