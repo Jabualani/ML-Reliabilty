@@ -1,0 +1,68 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Permutation Shapley and Local Surrogate Explanations for Tabular Classifiers}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+}
+\hypersetup{pdfauthor={Jabulani Monchwe and Martin Chanza}}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+ReliableML provides model-agnostic tabular explanations for fitted classifiers with probability outputs. Its global/local attribution routine estimates interventional Shapley contributions by Monte Carlo feature permutations and background-row replacement; its local explanation fits a weighted linear surrogate to numerical perturbations in the style of LIME. This paper derives the target quantities and approximations, defines the package's summaries and alignment diagnostics, and discusses sensitivity to background data, feature dependence, and perturbation design. Explanations represent behavior of the fitted model under an artificial feature-replacement distribution. Agreement between methods does not establish predictive correctness, causal influence, or a valid reason for a decision.
+\end{abstract}
+
+\begin{IEEEkeywords}
+explainable machine learning, Shapley values, LIME, model-agnostic explanation, feature attribution
+\end{IEEEkeywords}
+
+\section{Introduction}
+Explanations are often used to inspect complex classifiers, but an attribution is conditional on both a model and a definition of how missing features are represented. Shapley values provide an additive allocation from cooperative game theory; LIME approximates a model locally with an interpretable surrogate \cite{shap,lime}. ReliableML provides finite-sample approximations for tabular numeric inputs and compares their rankings \cite{software}. These are interpretability tools, not causal methods or guarantees of correctness.
+
+\section{Prediction target and Shapley values}
+Let \(f(x)\) be a selected class probability, \(F=\{1,\ldots,d\}\) the feature set, and \(v_x(S)\) the model output when features in \(S\) take their values from instance \(x\) and the remaining features are integrated over a background distribution. The Shapley value for feature \(j\) is
+\[
+\begin{aligned}
+\phi_j(f,x)
+&=\sum_{S\subseteq F\setminus\{j\}}
+\frac{|S|!(d-|S|-1)!}{d!}\\
+&\qquad\cdot\left[v_x(S\cup\{j\})-v_x(S)\right].
+\end{aligned}
+\]
+The weights average feature \(j\)'s marginal contribution over all feature orderings. Exact computation requires exponentially many coalitions. ReliableML approximates the interventional value using sampled permutations and background rows. For each permutation, it starts from a sampled background row, replaces features in that order with the explained instance's values, and accumulates successive probability differences. Averaging across sampled permutations estimates \(\phi_j\); the Monte Carlo error depends on the number of draws and the chosen background.
+
+Interventional replacement can break dependence between features and create implausible combinations. Results can be sensitive to background population and class choice. The estimator must provide \code{predict}, \code{predict\_proba}, and \code{classes\_}; inputs and background must have the same finite numeric feature schema. Multiclass explanation requires an explicit class target; a binary target defaults to its positive class as defined by the estimator.
+
+\section{Local weighted linear surrogate}
+For instance \(x\), LIME-style explanation samples perturbed points \(z\), computes \(f(z)\), and assigns proximity weights \(\pi_x(z)\). A local surrogate \(g\) is fit by
+\[
+g_x^\star=\arg\min_{g\in\mathcal G}
+\sum_{z\in\mathcal Z}\pi_x(z)\left(f(z)-g(z)\right)^2+\Omega(g).
+\]
+The implementation samples selected numeric features from marginal Gaussian distributions parameterized by background means and scales, weights perturbations by a distance kernel, and fits a ridge-stabilized weighted linear model. Reported local coefficients are expressed as contributions relative to standardized feature values; weighted fidelity summarizes the surrogate's fit over the sampled neighborhood. The neighborhood is synthetic and may not follow the data manifold, especially with correlated or bounded features.
+
+\section{Global summary and alignment}
+For explained observations \(x_1,\ldots,x_m\), global importance is the average absolute attribution
+\[
+I_j=\frac1m\sum_{i=1}^m|\hat\phi_j(f,x_i)|.
+\]
+The report includes local signed contributions, global mean absolute importance, and optional rankings. Alignment between SHAP-like and LIME-like outputs uses rank correlation, top-feature overlap, sign agreement, and bootstrap intervals for mean rank agreement. It also permits comparison with user-supplied importance values. These are measures of consistency between explanation procedures, not reliability scores or evidence that a feature is a valid cause.
+
+\section{Evaluation and responsible use}
+Explanations should be assessed on representative background and holdout data, across relevant groups and time periods, with sensitivity analyses over background selection and sample count \cite{molnar}. Inspect whether perturbations remain valid under domain constraints; if they do not, use a domain-aware conditional or causal approach outside the current implementation. Compare explanation patterns for errors and shifted inputs, but do not infer that stable explanations imply stable performance. Where decisions have consequences, communicate uncertainty and consult subject-matter experts.
+
+\section{Limitations}
+The method supports numeric tabular features and probability-capable classifiers. Monte Carlo approximation has sampling error; finite local neighborhoods can be unstable. Feature dependence makes interventional attribution interpretation challenging. Current explanation methods do not model causal structure, do not identify counterfactual outcomes, and do not validate that the underlying prediction is correct. Agreement can arise because methods share model behavior, data artifacts, or biases.
+
+\section{Conclusion}
+ReliableML approximates two complementary model-explanation families: permutation-based interventional Shapley attribution and a local weighted linear surrogate. Their value is diagnostic and conditional on reference and perturbation choices. They should be combined with labeled predictive validation, subgroup analysis, leakage review, and domain-valid reasoning rather than treated as a trust certificate.
+
+\begin{thebibliography}{9}
+\bibitem{shap} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
+\bibitem{lime} M. T. Ribeiro, S. Singh, and C. Guestrin, ``Why should I trust you?: Explaining the predictions of any classifier,'' in \emph{Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining}, 2016, pp. 1135--1144.
+\bibitem{molnar} C. Molnar, \emph{Interpretable Machine Learning}, 2nd ed., 2022.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

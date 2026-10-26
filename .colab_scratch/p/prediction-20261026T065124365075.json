@@ -1,0 +1,757 @@
+{
+  "sample_count": 72,
+  "similarity_score": 0.3504878395226681,
+  "mean_psi": 1.0484292677665181,
+  "drift_threshold": 0.2,
+  "chi_square_alpha": 0.05,
+  "confidence_level": 0.95,
+  "bootstrap_samples": 200,
+  "confidence_intervals": {
+    "similarity_score": [
+      0.30439403445288316,
+      0.5878081214159888
+    ],
+    "mean_psi": [
+      0.0,
+      1.1719805970521628
+    ]
+  },
+  "evaluation": {
+    "sample_count": 72,
+    "classification": {
+      "labels": [
+        "0",
+        "1",
+        "2"
+      ],
+      "confusion_matrix": [
+        [
+          24,
+          0,
+          0
+        ],
+        [
+          1,
+          24,
+          4
+        ],
+        [
+          0,
+          2,
+          17
+        ]
+      ],
+      "accuracy": 0.9027777777777778,
+      "balanced_accuracy": 0.9074410163339383,
+      "matthews_correlation_coefficient": 0.8548599434403783,
+      "macro_average": {
+        "precision": 0.8975335775335775,
+        "recall": 0.9074410163339383,
+        "specificity": 0.9523944468821609,
+        "f1": 0.9007730364873222
+      },
+      "weighted_average": {
+        "precision": 0.9054192104192104,
+        "recall": 0.9027777777777778,
+        "specificity": 0.9544055628687046,
+        "f1": 0.9023513193156051
+      },
+      "per_class": [
+        {
+          "label": "0",
+          "support": 24,
+          "precision": 0.96,
+          "recall": 1.0,
+          "specificity": 0.9791666666666666,
+          "f1": 0.9795918367346939
+        },
+        {
+          "label": "1",
+          "support": 29,
+          "precision": 0.9230769230769231,
+          "recall": 0.8275862068965517,
+          "specificity": 0.9534883720930233,
+          "f1": 0.8727272727272727
+        },
+        {
+          "label": "2",
+          "support": 19,
+          "precision": 0.8095238095238095,
+          "recall": 0.8947368421052632,
+          "specificity": 0.9245283018867925,
+          "f1": 0.8500000000000001
+        }
+      ],
+      "probability_calibration": {
+        "status": "ok",
+        "mean_classwise_brier_score": 0.05554814814814815,
+        "log_loss": 0.31078071867359025,
+        "top_label_expected_calibration_error": 0.11861111111111107,
+        "confidence_bins": [
+          {
+            "lower_bound": 0.3,
+            "upper_bound": 0.4,
+            "sample_count": 1,
+            "mean_confidence": 0.38,
+            "accuracy": 0.0
+          },
+          {
+            "lower_bound": 0.4,
+            "upper_bound": 0.5,
+            "sample_count": 2,
+            "mean_confidence": 0.45999999999999996,
+            "accuracy": 1.0
+          },
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "sample_count": 11,
+            "mean_confidence": 0.5454545454545454,
+            "accuracy": 0.6363636363636364
+          },
+          {
+            "lower_bound": 0.6,
+            "upper_bound": 0.7,
+            "sample_count": 7,
+            "mean_confidence": 0.6514285714285715,
+            "accuracy": 0.8571428571428571
+          },
+          {
+            "lower_bound": 0.7,
+            "upper_bound": 0.8,
+            "sample_count": 8,
+            "mean_confidence": 0.7525,
+            "accuracy": 1.0
+          },
+          {
+            "lower_bound": 0.8,
+            "upper_bound": 0.9,
+            "sample_count": 14,
+            "mean_confidence": 0.8371428571428573,
+            "accuracy": 0.9285714285714286
+          },
+          {
+            "lower_bound": 0.9,
+            "upper_bound": 1.0,
+            "sample_count": 29,
+            "mean_confidence": 0.9524137931034483,
+            "accuracy": 1.0
+          }
+        ],
+        "interpretation": "Lower scores indicate better probability calibration on this labeled evaluation batch. The expected calibration error uses equal-width bins and top-label confidence; results depend on the evaluation sample and bin count."
+      }
+    },
+    "statistical_tests": {
+      "feature_target_associations": {
+        "anova_numeric_features": [
+          {
+            "feature": "alcohol",
+            "statistic": 48.53843386762002,
+            "p_value": 6.912388154896967e-14,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "malic_acid",
+            "statistic": 10.750332133140713,
+            "p_value": 8.625964619188498e-05,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "ash",
+            "statistic": 6.266366429316396,
+            "p_value": 0.0031574730188240197,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "alcalinity_of_ash",
+            "statistic": 17.55732882102122,
+            "p_value": 6.856996532513897e-07,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "magnesium",
+            "statistic": 3.389100370827936,
+            "p_value": 0.03944715169188372,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "total_phenols",
+            "statistic": 37.85165538696117,
+            "p_value": 8.012840392527137e-12,
+            "degrees_of_freedom_between": 2,
+            "degrees_of_freedom_within": 69,
+            "sample_count": 72,
+            "excluded_count": 0,
+            "group_sizes": [
+              29,
+              19,
+              24
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          }
+        ],
+        "manova_numeric_features": {
+          "dependent_features": [
+            "alcohol",
+            "malic_acid",
+            "ash",
+            "alcalinity_of_ash",
+            "magnesium",
+            "total_phenols"
+          ],
+          "group": "target_class",
+          "group_count": 3,
+          "sample_count": 72,
+          "wilks_lambda": 0.10123640346722006,
+          "f_statistic": 22.857683603070267,
+          "p_value": 2.5444479813040164e-26,
+          "numerator_df": 12.0,
+          "denominator_df": 128.0,
+          "assumptions_not_tested": [
+            "Observations are independent.",
+            "Multivariate residuals are approximately normal within groups.",
+            "Group covariance matrices are approximately equal."
+          ],
+          "status": "ok"
+        },
+        "chi_square_categorical_features": [],
+        "interpretation": "Tests whether numeric feature means or categorical feature frequencies differ across observed target classes."
+      },
+      "training_vs_test_cohorts": {
+        "anova_numeric_features": [
+          {
+            "feature": "alcohol",
+            "statistic": 0.385082492831525,
+            "p_value": 0.535698373771154,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "malic_acid",
+            "statistic": 0.0028689265331159936,
+            "p_value": 0.9573445935822285,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "ash",
+            "statistic": 0.001476097803102846,
+            "p_value": 0.9693963450678273,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "alcalinity_of_ash",
+            "statistic": 1.0063075500004321,
+            "p_value": 0.3171662546871769,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "magnesium",
+            "statistic": 1.812125128849184,
+            "p_value": 0.17998479424397404,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "total_phenols",
+            "statistic": 0.11150785343540534,
+            "p_value": 0.7388314928011891,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 176,
+            "sample_count": 178,
+            "excluded_count": 0,
+            "group_sizes": [
+              106,
+              72
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          }
+        ],
+        "manova_numeric_features": {
+          "dependent_features": [
+            "alcohol",
+            "malic_acid",
+            "ash",
+            "alcalinity_of_ash",
+            "magnesium",
+            "total_phenols"
+          ],
+          "group": "cohort",
+          "group_count": 2,
+          "sample_count": 178,
+          "wilks_lambda": 0.9705069660641452,
+          "f_statistic": 0.8660952435825231,
+          "p_value": 0.5211104065350951,
+          "numerator_df": 6.0,
+          "denominator_df": 171.0,
+          "assumptions_not_tested": [
+            "Observations are independent.",
+            "Multivariate residuals are approximately normal within groups.",
+            "Group covariance matrices are approximately equal."
+          ],
+          "status": "ok"
+        },
+        "chi_square_categorical_features": [],
+        "interpretation": "Tests train-versus-test cohort differences; it complements the per-feature drift statistics and does not measure performance."
+      }
+    },
+    "bias_variance": {
+      "status": "ok",
+      "method": "repeated_stratified_cv_brier_decomposition",
+      "folds": 3,
+      "repeats": 1,
+      "estimator_fits": 3,
+      "bias_squared": 0.2562888888888888,
+      "prediction_variance": 0.0,
+      "mean_squared_probability_error": 0.2562888888888888,
+      "interpretation": "Empirical one-hot/Brier error decomposition from out-of-fold predictions; not a population irreducible-noise decomposition.",
+      "probabilities": "Estimator predict_proba is used when available; otherwise hard predictions are one-hot encoded."
+    },
+    "fairness": {
+      "status": "not_requested"
+    },
+    "limitations": [
+      "Performance metrics require true labels for the evaluated batch.",
+      "Statistical test p-values are assumption-dependent and are not evidence of causal effects.",
+      "Bias/variance values are empirical repeated-CV Brier-error decomposition, not population-level irreducible-noise estimates."
+    ]
+  },
+  "covariate_shift_detected": true,
+  "drifted_features": [
+    "alcohol",
+    "malic_acid",
+    "ash",
+    "alcalinity_of_ash",
+    "magnesium",
+    "total_phenols"
+  ],
+  "features": [
+    {
+      "name": "alcohol",
+      "ks_statistic": 0.11111111111111116,
+      "kl_divergence": 0.22722895414142433,
+      "psi": 0.9919422533738451,
+      "wasserstein_distance": 0.11904088050314475,
+      "dsi": 0.5012976854166903,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          1.3739880702091387
+        ],
+        "kl_divergence": [
+          0.0,
+          0.2563077527398123
+        ],
+        "ks_statistic": [
+          0.0,
+          0.125537211740042
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.1382438417190779
+        ],
+        "dsi": [
+          0.0,
+          0.7993441685197044
+        ]
+      },
+      "drifted": true
+    },
+    {
+      "name": "malic_acid",
+      "ks_statistic": 0.08359538784067083,
+      "kl_divergence": 0.10263553482303081,
+      "psi": 0.5397738537244618,
+      "wasserstein_distance": 0.0868055555555555,
+      "dsi": 0.1653242151189806,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.7976263496948405
+        ],
+        "kl_divergence": [
+          0.0,
+          0.11647126890836468
+        ],
+        "ks_statistic": [
+          0.0,
+          0.08362159329140458
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.0868055555555555
+        ],
+        "dsi": [
+          0.0,
+          0.21457740911151174
+        ]
+      },
+      "drifted": true
+    },
+    {
+      "name": "ash",
+      "ks_statistic": 0.08149895178197064,
+      "kl_divergence": 0.10116985114673036,
+      "psi": 0.3624777478501556,
+      "wasserstein_distance": 0.04156184486373167,
+      "dsi": 2.284303248760559,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": true,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.5498844558468345
+        ],
+        "kl_divergence": [
+          0.0,
+          0.12644645124710996
+        ],
+        "ks_statistic": [
+          0.0,
+          0.08149895178197064
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.042898977987421365
+        ],
+        "dsi": [
+          0.2747781482686129,
+          4.25709541545601
+        ]
+      },
+      "drifted": true
+    },
+    {
+      "name": "alcalinity_of_ash",
+      "ks_statistic": 0.10901467505241089,
+      "kl_divergence": 1.1988959760402809,
+      "psi": 2.104338206372921,
+      "wasserstein_distance": 0.6228773584905659,
+      "dsi": 0.42459450300900187,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.401292073282673,
+          2.9488021847405843
+        ],
+        "kl_divergence": [
+          0.0,
+          1.784111424328656
+        ],
+        "ks_statistic": [
+          0.0,
+          0.13155791404612152
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.7760272536687629
+        ],
+        "dsi": [
+          0.0,
+          0.5778725982722286
+        ]
+      },
+      "drifted": true
+    },
+    {
+      "name": "magnesium",
+      "ks_statistic": 0.12133123689727465,
+      "kl_divergence": 0.07746113330510762,
+      "psi": 0.32438735810884006,
+      "wasserstein_distance": 3.052672955974842,
+      "dsi": 0.9197964652404262,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.5126946025854947
+        ],
+        "kl_divergence": [
+          0.0,
+          0.09107018430528611
+        ],
+        "ks_statistic": [
+          0.0,
+          0.15662342767295595
+        ],
+        "wasserstein_distance": [
+          0.0,
+          4.212375524109012
+        ],
+        "dsi": [
+          0.0,
+          1.5907307555947316
+        ]
+      },
+      "drifted": true
+    },
+    {
+      "name": "total_phenols",
+      "ks_statistic": 0.10377358490566035,
+      "kl_divergence": 0.2574067315535348,
+      "psi": 1.9676561871688847,
+      "wasserstein_distance": 0.1178197064989518,
+      "dsi": 0.38979032145705544,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          2.810467550326561
+        ],
+        "kl_divergence": [
+          0.0,
+          0.3315664030944914
+        ],
+        "ks_statistic": [
+          0.0,
+          0.11191037735849052
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.15076585429769396
+        ],
+        "dsi": [
+          0.0,
+          0.5414908854541691
+        ]
+      },
+      "drifted": true
+    }
+  ],
+  "predictions": [
+    1,
+    2,
+    0,
+    2,
+    0,
+    1,
+    1,
+    0,
+    2,
+    0,
+    1,
+    2,
+    2,
+    2,
+    2,
+    1,
+    0,
+    2,
+    0,
+    0,
+    1,
+    0,
+    2,
+    0,
+    1,
+    2,
+    2,
+    2,
+    1,
+    0,
+    0,
+    1,
+    2,
+    1,
+    0,
+    0,
+    1,
+    1,
+    1,
+    0,
+    2,
+    0,
+    2,
+    2,
+    2,
+    2,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    1,
+    2,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+    0,
+    2,
+    1,
+    2,
+    1,
+    0,
+    1,
+    0
+  ],
+  "output_type": "predictions_and_reliability_report"
+}

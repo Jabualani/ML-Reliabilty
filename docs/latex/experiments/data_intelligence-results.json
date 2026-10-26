@@ -1,0 +1,269 @@
+{
+  "benchmark": {
+    "global": {
+      "isolation_forest": {
+        "auroc": [
+          1.0,
+          0.0
+        ],
+        "precision_at_k": [
+          1.0,
+          0.0
+        ]
+      },
+      "lof": {
+        "auroc": [
+          1.0,
+          0.0
+        ],
+        "precision_at_k": [
+          1.0,
+          0.0
+        ]
+      },
+      "mahalanobis": {
+        "auroc": [
+          1.0,
+          0.0
+        ],
+        "precision_at_k": [
+          1.0,
+          0.0
+        ]
+      },
+      "som_quantization": {
+        "auroc": [
+          1.0,
+          0.0
+        ],
+        "precision_at_k": [
+          1.0,
+          0.0
+        ]
+      },
+      "ensemble_rank": {
+        "auroc": [
+          1.0,
+          0.0
+        ],
+        "precision_at_k": [
+          1.0,
+          0.0
+        ]
+      }
+    },
+    "correlation_breaking": {
+      "isolation_forest": {
+        "auroc": [
+          0.8094484210526316,
+          0.030666666538199033
+        ],
+        "precision_at_k": [
+          0.11600000000000002,
+          0.07472616676907762
+        ]
+      },
+      "lof": {
+        "auroc": [
+          0.9448168421052632,
+          0.019437571750809502
+        ],
+        "precision_at_k": [
+          0.6639999999999999,
+          0.05425863986500215
+        ]
+      },
+      "mahalanobis": {
+        "auroc": [
+          0.9304673684210527,
+          0.024449436862244628
+        ],
+        "precision_at_k": [
+          0.6439999999999999,
+          0.08475848040166835
+        ]
+      },
+      "som_quantization": {
+        "auroc": [
+          0.9064505263157896,
+          0.029004615087928544
+        ],
+        "precision_at_k": [
+          0.532,
+          0.062096698785040094
+        ]
+      },
+      "ensemble_rank": {
+        "auroc": [
+          0.917743157894737,
+          0.023614853863441324
+        ],
+        "precision_at_k": [
+          0.5200000000000001,
+          0.05059644256269407
+        ]
+      }
+    },
+    "local_density": {
+      "isolation_forest": {
+        "auroc": [
+          0.6378357894736842,
+          0.04018294871351553
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      },
+      "lof": {
+        "auroc": [
+          0.9992673684210527,
+          0.0010210330980225943
+        ],
+        "precision_at_k": [
+          0.96,
+          0.039999999999999994
+        ]
+      },
+      "mahalanobis": {
+        "auroc": [
+          0.518298947368421,
+          0.0040985186162374905
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      },
+      "som_quantization": {
+        "auroc": [
+          0.5251368421052632,
+          0.002866128489927781
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      },
+      "ensemble_rank": {
+        "auroc": [
+          0.737338947368421,
+          0.015231922158138102
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "between_clusters": {
+      "isolation_forest": {
+        "auroc": [
+          0.9468799999999999,
+          0.020005160109954897
+        ],
+        "precision_at_k": [
+          0.324,
+          0.1332066064427737
+        ]
+      },
+      "lof": {
+        "auroc": [
+          0.269861052631579,
+          0.013913719728235881
+        ],
+        "precision_at_k": [
+          0.004,
+          0.012
+        ]
+      },
+      "mahalanobis": {
+        "auroc": [
+          0.07999999999999999,
+          0.01696916284130204
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      },
+      "som_quantization": {
+        "auroc": [
+          0.2164294736842105,
+          0.037938285152763686
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      },
+      "ensemble_rank": {
+        "auroc": [
+          0.36203789473684206,
+          0.022505829937228154
+        ],
+        "precision_at_k": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "real": {
+    "breast_cancer": {
+      "rows": 569,
+      "columns": 31,
+      "summary_score": 66.44463971880492,
+      "target_verdict": "strongly explained",
+      "consensus_outlier_rows": 34,
+      "som_quantization_error": 2.3920943600894904,
+      "som_topographic_error": 0.026362038664323375,
+      "seconds": 3.2
+    },
+    "wine": {
+      "rows": 178,
+      "columns": 14,
+      "summary_score": 95.5430711610487,
+      "target_verdict": "strongly explained",
+      "consensus_outlier_rows": 7,
+      "som_quantization_error": 1.5926305119604292,
+      "som_topographic_error": 0.028089887640449437,
+      "seconds": 1.0
+    },
+    "diabetes": {
+      "rows": 442,
+      "columns": 11,
+      "summary_score": 95.53544494720965,
+      "target_verdict": "strongly explained",
+      "consensus_outlier_rows": 2,
+      "som_quantization_error": 1.4729914163304785,
+      "som_topographic_error": 0.049773755656108594,
+      "seconds": 1.0
+    }
+  },
+  "figures": {
+    "summary_score": 57.89868811134189,
+    "figures": [
+      "association",
+      "clusters",
+      "correlation",
+      "dashboard",
+      "distributions",
+      "explainability",
+      "feature_ranking",
+      "feature_selection",
+      "missingness",
+      "outlier_consensus",
+      "som",
+      "tails",
+      "trend",
+      "vif"
+    ],
+    "consensus_rows": 38
+  },
+  "settings": {
+    "seeds": 10,
+    "planted_outliers": 25,
+    "rows": 500
+  }
+}

@@ -1,0 +1,151 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{multirow}
+\newcommand{\tbf}{\textit{TBF}}
+\title{Comparing ReliableAutoML with Other AutoML Frameworks by Method Family: Protocol and Output Analysis}
+\author{\jabulaniauthor\and\martinchanzauthor\and\oloratoauthor\and\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+We specify a protocol for comparing ReliableAutoML with other open-source AutoML frameworks chosen by method family: stacking/meta-ensemble systems (AutoGluon-Tabular, H2O AutoML, auto-sklearn), a cost-frugal search system (FLAML), and an evolutionary pipeline-search system (TPOT). The comparison is of delivered \emph{outputs}: the selected model, held-out balanced accuracy, accuracy and log-loss, fitting time under a stated budget, and the reports and artefacts each framework returns. All frameworks are fitted on identical development rows and scored once on identical untouched test rows for four datasets and three seeds. In this version the ReliableAutoML and plain-logistic-regression rows contain numbers measured on the authors' machine; the competitor cells are deliberately empty (marked \tbf, ``to be filled from the Colab run'') because the competitors are run only in the accompanying Colab notebook. No competitor result is reported or implied here.
+\end{abstract}
+\begin{IEEEkeywords}
+automated machine learning, benchmarking, stacking, model selection, tabular classification
+\end{IEEEkeywords}
+
+\section{Purpose and scope}
+ReliableAutoML (described in the companion paper) is designed around leakage control and reliability reporting: it validates the table, cleans and encodes inside folds, tunes candidates with nested cross-validation, and returns a \code{ReliablePipeline} whose reports (cleaning, partition, selection, reliability) accompany predictions. Other frameworks are designed primarily for predictive accuracy under a time budget. A fair comparison must therefore state what is compared. We compare (i) predictive outputs on untouched data, (ii) cost, and (iii) what each framework hands back to the user. We do \emph{not} claim that any ranking on four small datasets generalises.
+
+\section{Choice of competitors by family}
+Frameworks are grouped by the mechanism that produces the final predictor, since mechanism determines both accuracy behaviour and the kind of output available.
+\begin{enumerate}[label=(\alph*),leftmargin=*]
+\item \textbf{Stacking / meta-ensemble.} The final predictor is a learned or selected combination of many base models. This is the family closest to ReliableAutoML, whose candidate pool contains cross-fitted stacking learners (\code{meta\_pipeline}, \code{sc\_meta}) and a performance-based selector, and which chooses among candidates by nested outer-fold score. Members: \textbf{AutoGluon-Tabular}~\cite{erickson2020} (multi-layer stack ensembling with $k$-fold bagging), \textbf{H2O AutoML}~\cite{ledell2020} (many base models followed by stacked ensembles, with cross-validation), and \textbf{auto-sklearn}~\cite{feurer2015} (Bayesian optimisation with meta-learning warm start and post-hoc ensemble selection). These are the primary comparators.
+\item \textbf{Cost-frugal search.} \textbf{FLAML}~\cite{wang2021} allocates a time budget by estimated cost of learners and hyperparameter settings and typically returns a single tuned model. It is a contrast: it shows what a small, fast search delivers and how little output beyond the model it provides.
+\item \textbf{Evolutionary pipeline search.} \textbf{TPOT}~\cite{olson2016} evolves scikit-learn pipelines by genetic programming. It is a contrast in search mechanism and in output: an exportable scikit-learn pipeline.
+\end{enumerate}
+We include a plain logistic-regression pipeline (median/mode imputation, one-hot, standardisation, balanced class weights) as a floor that is cheap and unselected; it shows when the search machinery adds nothing. Auto-sklearn runs only on Linux and, in current releases, on older Python versions; it is attempted in the Colab notebook and, if installation fails there, its cells stay empty and this is stated rather than substituted. Frameworks not chosen (e.g., commercial services, deep-learning-only systems) are excluded because they do not belong to these families or are not freely runnable by readers.
+
+\begin{table*}[t]
+\caption{Frameworks by family. Entries reflect the cited papers and documented defaults; versions and defaults change, and ``leakage controls'' lists only what the framework's own design does, not a guarantee. ``Nested'' means selection is evaluated on folds not used for its own tuning.}
+\label{tab:family}
+\centering\scriptsize
+\begin{tabular}{p{0.11\textwidth}p{0.10\textwidth}p{0.22\textwidth}p{0.17\textwidth}p{0.16\textwidth}p{0.16\textwidth}}
+\toprule
+Framework & Family & Search strategy & Ensembling & Internal validation & Leakage controls\\
+\midrule
+ReliableAutoML & (a) stacking + nested selection & Light grid or randomized search per fixed candidate pool (7 candidates by default) & Cross-fitted stacking candidates; single selected pipeline & Nested stratified CV: inner $J=2$ search inside outer $K=3$ folds & Fold-local cleaning/scaling/encoding; ATTP partition design exception documented; fresh external test advised\\
+AutoGluon-Tabular & (a) & Fixed model portfolio, little hyperparameter search by default~\cite{erickson2020} & Multi-layer stacking, bagged folds & $k$-fold bagging; out-of-fold predictions feed upper layers & Out-of-fold stacking within the supplied training data; no nested estimate of the whole procedure\\
+H2O AutoML & (a) & Default models plus random grid search~\cite{ledell2020} & Stacked ensembles (all models; best per family) & Cross-validation (nfolds) on training frame & Cross-validated metalearner on out-of-fold predictions; leaderboard metrics are optimistic for selection\\
+auto-sklearn & (a) & SMAC Bayesian optimisation with meta-learning warm start~\cite{feurer2015} & Post-hoc ensemble selection over evaluated models & Holdout or cross-validation on training data & Validation predictions drive ensemble; no nested estimate\\
+FLAML & (b) cost-frugal & Cost-aware search over learners/configurations~\cite{wang2021} & Single best model by default (optional ensemble) & Holdout or CV chosen from data size & Internal validation on training data; no nested estimate\\
+TPOT & (c) evolutionary & Genetic programming over scikit-learn pipelines~\cite{olson2016} & None in the evolved pipeline unless stacking operators are evolved & Cross-validation of each pipeline (fitness) & Preprocessing inside evaluated pipelines; fitness is the CV score, optimistic for the winner\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\caption{Output and practicality comparison. Entries are qualitative statements from design and documentation; \tbf{} marks items the Colab run (or the notebook's printed outputs) should confirm for the installed versions.}
+\label{tab:features}
+\centering\scriptsize
+\begin{tabular}{p{0.13\textwidth}p{0.10\textwidth}p{0.10\textwidth}p{0.12\textwidth}p{0.12\textwidth}p{0.10\textwidth}p{0.12\textwidth}p{0.08\textwidth}}
+\toprule
+Framework & Time-budget parameter & Leaderboard of candidates & Cleaning / partition / reliability report & Interpretability outputs & Exportable pipeline & Main dependencies & Licence\\
+\midrule
+ReliableAutoML & No (cost set by grid and folds) & Yes, with outer mean/std and fold scores & Cleaning, partition, selection reports and \code{ReliabilityReport} (drift, intervals) from \code{predict\_with\_report} & Explanation-consistency and reason audit & Pickle of \code{ReliablePipeline} (sklearn pipeline inside) & NumPy, pandas, scikit-learn, SciPy, ATTP & MIT\\
+AutoGluon-Tabular & Yes & Yes & No reliability report; no cleaning report & Feature importance & Predictor directory (not a plain sklearn object) & PyTorch and gradient-boosting libraries & Apache-2.0\\
+H2O AutoML & Yes & Yes & No & Variable importance, SHAP via H2O explain & Native model/MOJO export & Java runtime & Apache-2.0\\
+auto-sklearn & Yes & Yes (evaluated runs) & No & Limited (ensemble weights) & Fitted object (pickle) & scikit-learn, SMAC; Linux only & BSD-3\\
+FLAML & Yes & Best model and search history & No & Feature importances of best learner & Estimator object (pickle) & Light; learner libraries optional & MIT\\
+TPOT & Yes (generations/time) & Pareto set of pipelines & No & None built in & Fitted scikit-learn pipeline; code export in classic versions & scikit-learn & LGPL-3.0\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Protocol}
+For dataset $D$ and seed $s$, a stratified split with test fraction $0.25$ and \code{random\_state}$=s$ yields development rows $D_{\mathrm{dev}}$ and test rows $D_{\mathrm{test}}$. The test rows are used once, after fitting, for every framework; no framework or analyst chooses settings using them. Datasets: a synthetic mixed-type table (240 rows, two numeric and two categorical predictors with injected missing values, binary target), Wine (178 rows, 3 classes), Breast Cancer (569, 2) and Digits (1797 rows, 64 features, 10 classes), the last three from scikit-learn. Seeds: 42, 43, 44; the seed also seeds the framework when it accepts one and, for the synthetic data, the generator.
+
+\textbf{Metrics.} With $C$ classes, per-class recall $r_c=TP_c/(TP_c+FN_c)$, balanced accuracy $\mathrm{BA}=C^{-1}\sum_c r_c$, accuracy, and log-loss $\mathrm{LL}=-n^{-1}\sum_i\log\hat p_{i,y_i}$ with probabilities clipped to $[10^{-15},1]$ and renormalised. The same function computes these for all frameworks from their predicted labels and class probabilities. Reported values are mean$\pm$sample standard deviation over the three seeds ($n=3$; the standard deviation is itself imprecise).
+
+\textbf{Time.} Competitors receive a wall-clock budget $B=60$\,s per fit (notebook parameter \code{BUDGET}); TPOT receives it as \code{max\_time\_mins}. ReliableAutoML has no time-budget parameter: its cost is determined by the nested search ($K(G_mJ+1)+\ldots$ fits per candidate, see the companion paper), and we report its measured wall time instead. Budgets are therefore not matched: on Digits ReliableAutoML used about 290\,s per fit, nearly five times $B$. Comparisons of accuracy at unequal cost must be read with this in mind; a second Colab pass with $B$ set to the measured ReliableAutoML time per dataset is the natural control.
+
+\textbf{Internal objectives differ.} ReliableAutoML optimises balanced accuracy; AutoGluon is configured with balanced accuracy; TPOT with balanced accuracy; auto-sklearn with balanced accuracy; H2O with mean per-class error (an equivalent for balanced error); FLAML uses its default (log-loss for classification). Differences in log-loss and balanced accuracy partly reflect these objectives.
+
+\textbf{Input handling.} ReliableAutoML, AutoGluon, H2O, FLAML and auto-sklearn receive the raw development table including NaNs and string categoricals (auto-sklearn with categorical dtypes). TPOT requires numeric input, so a median/mode imputer and one-hot encoder fitted on $D_{\mathrm{dev}}$ precede it; this is a handicap or aid depending on the dataset and is noted in the results. The scripts are \code{experiments/automl\_comparison.py} and \code{docs/colab/automl.ipynb}; the notebook embeds the same script.
+
+\textbf{Outputs recorded.} Selected model identifier, leaderboard size, wall time, and for ReliableAutoML the presence and structure of cleaning, fit/partition, and reliability reports and the size of the saved artefact.
+
+\section{Results measured locally}
+The following were measured on the authors' Windows machine (Python 3.15.0, NumPy 2.5.4, pandas 3.1.0, scikit-learn 1.9.1), by running only ReliableAutoML (defaults: \code{s\_attp\_clf}, light tuning, $K=3$, $J=2$, seven candidates including StatCore) and the logistic baseline. All 24 runs completed without error. Competitor rows are marked \tbf: they will be filled from the Colab results file \code{automl\_comparison\_results.json}. Values are rounded to four decimals.
+
+\begin{table*}[t]
+\caption{Held-out results, mean$\pm$std over seeds 42--44. $n_{dev}/n_{test}$ and feature/class counts are for one split. Time is wall-clock seconds for the full fit. \tbf{} = to be filled from the Colab run.}
+\label{tab:results}
+\centering\scriptsize
+\begin{tabular}{llcccccc}
+\toprule
+Dataset ($n_{dev}/n_{test}$) & Framework & Balanced acc. & Accuracy & Log-loss & Time (s) & Budget (s) & Selected model\\
+\midrule
+\multirow{7}{*}{Synthetic mixed (180/60)} & ReliableAutoML & 0.7932$\pm$0.0211 & 0.7944$\pm$0.0192 & 0.4030$\pm$0.0117 & 23.8$\pm$7.6 & none & \code{meta\_pipeline}, \code{sc\_logistic}, \code{meta\_pipeline}\\
+ & Logistic baseline & 0.8281$\pm$0.0295 & 0.8278$\pm$0.0255 & 0.3703$\pm$0.0037 & 0.0 & -- & --\\
+ & AutoGluon-Tabular & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & H2O AutoML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & auto-sklearn & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & FLAML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & TPOT & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+\midrule
+\multirow{7}{*}{Wine (133/45)} & ReliableAutoML & 0.9568$\pm$0.0466 & 0.9481$\pm$0.0559 & 0.2281$\pm$0.2098 & 40.8$\pm$7.1 & none & \code{meta\_pipeline} (2), \code{perf\_meta\_select}\\
+ & Logistic baseline & 0.9660$\pm$0.0298 & 0.9630$\pm$0.0339 & 0.0883$\pm$0.0344 & 0.0 & -- & --\\
+ & AutoGluon-Tabular & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & H2O AutoML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & auto-sklearn & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & FLAML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & TPOT & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+\midrule
+\multirow{7}{*}{Breast Cancer (426/143)} & ReliableAutoML & 0.9652$\pm$0.0037 & 0.9627$\pm$0.0107 & 0.1412$\pm$0.0292 & 73.2$\pm$9.1 & none & \code{sc\_mlp} (2), \code{meta\_pipeline}\\
+ & Logistic baseline & 0.9621$\pm$0.0144 & 0.9604$\pm$0.0081 & 0.0921$\pm$0.0349 & 0.0 & -- & --\\
+ & AutoGluon-Tabular & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & H2O AutoML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & auto-sklearn & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & FLAML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & TPOT & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+\midrule
+\multirow{7}{*}{Digits (1347/450)} & ReliableAutoML & 0.9799$\pm$0.0042 & 0.9800$\pm$0.0044 & 0.1260$\pm$0.0586 & 290.0$\pm$8.1 & none & \code{sc\_meta} (2), \code{sc\_knn}\\
+ & Logistic baseline & 0.9717$\pm$0.0067 & 0.9719$\pm$0.0068 & 0.1084$\pm$0.0087 & 0.1 & -- & --\\
+ & AutoGluon-Tabular & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & H2O AutoML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & auto-sklearn & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & FLAML & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+ & TPOT & \tbf & \tbf & \tbf & \tbf & 60 & \tbf\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{What the local numbers show}
+ReliableAutoML's balanced accuracy is above the logistic baseline's on Breast Cancer (by 0.003, within one baseline standard deviation) and Digits (by 0.008, slightly more than either method's standard deviation), and below it on the synthetic data (by 0.035) and Wine (by 0.009, far inside the run-to-run spread). Its log-loss was higher than the baseline's on all four datasets, with the largest gap on Wine, where one seed gave a high loss (the Wine standard deviation of 0.2098 reflects this). The selected candidate changes with seed (Table~\ref{tab:results}), so the output ``which model'' is not stable on these small samples. ReliableAutoML cost between about 24\,s and 290\,s against a fraction of a second for the baseline. On this evidence, for these datasets the search buys no consistent accuracy gain over a regularised linear model, and its value must be argued from the reports it returns rather than from accuracy. With three seeds no significance test is meaningful, and we make none.
+
+\subsection{Artefacts returned by ReliableAutoML}
+For the first synthetic run the object returned: a leaderboard of 7 candidates; a cleaning report with sections \code{cleaning\_intensity}, \code{data\_integrity}, \code{ordinal\_features}, \code{scaling\_strategy}, \code{statistical\_cleaning}; a fit report with \code{cleaning}, \code{leaderboard}, \code{partition\_sizes}, \code{partitioner}, \code{selection}, \code{target\_column}, \code{warnings} (one warning raised); and a \code{ReliabilityReport} from \code{predict\_with\_report} with fields including \code{covariate\_shift\_detected}, \code{drifted\_features}, \code{mean\_psi}, \code{similarity\_score}, \code{confidence\_intervals} and \code{evaluation}. The saved artefact was a single 30{,}459-byte file. These outputs describe data handling and drift; they do not by themselves improve held-out accuracy. Whether any competitor produces equivalents is the question Table~\ref{tab:features} frames and the Colab notebook checks.
+
+\section{Interpreting the competitor results when they arrive}
+Pre-specified expectations, to be confirmed or refuted, not asserted: stacking frameworks given a 60\,s budget may exceed ReliableAutoML on the larger Digits data and may lose or tie on small datasets where all models are near ceiling; FLAML may match accuracy at lower cost but returns fewer artefacts; TPOT's result depends on its short budget and on external preprocessing. Any claim that ReliableAutoML is better than a competitor on accuracy requires the filled table and a stated uncertainty. Where a competitor is higher, we will report that plainly and attribute ReliableAutoML's niche to leakage control, nested selection and reporting.
+
+\section{Threats to validity and limitations}
+(1) Four small datasets and three seeds; no significance testing. (2) Unmatched budgets and objectives. (3) ReliableAutoML's partition step reduces the rows used for its final fit relative to some frameworks (it trains on the ATTP training partition of $D_{\mathrm{dev}}$, e.g.\ 144 of 180 rows on the synthetic data), whereas competitors typically use all of $D_{\mathrm{dev}}$; this disadvantages ReliableAutoML in accuracy comparisons. (4) The logistic baseline uses all of $D_{\mathrm{dev}}$. (5) Default settings of competitors change across versions; the Colab run records installed versions. (6) Competitor runs on Colab use different hardware from the local ReliableAutoML runs, so time comparisons across the two environments are indicative only; for a clean time comparison, run ReliableAutoML in the same notebook (it is in the framework list). (7) The Digits and Wine/Breast Cancer data are standard benchmarks and unrepresentative of messy industrial tables. (8) Selection among frameworks after viewing test scores would invalidate them; the framework list and metrics were fixed in advance. (9) Table~\ref{tab:features} states design-level facts, not measured behaviour.
+
+\section{Reproduction}
+Local (ReliableAutoML only): \code{python experiments/automl\_comparison.py --frameworks reliableml sklearn\_logistic --output experiments/automl-comparison-results.json}. Colab: open \code{docs/colab/automl.ipynb}, set the parameter cell, run all, download \code{automl\_comparison\_results.json} and \code{automl\_comparison\_table.csv}, and paste the values into Table~\ref{tab:results}.
+
+\begin{thebibliography}{10}
+\bibitem{feurer2015} M. Feurer \emph{et al.}, ``Efficient and robust automated machine learning,'' in \emph{Advances in Neural Information Processing Systems 28 (NeurIPS)}, 2015.
+\bibitem{erickson2020} N. Erickson \emph{et al.}, ``AutoGluon-Tabular: Robust and accurate AutoML for structured data,'' arXiv:2003.06505, 2020.
+\bibitem{wang2021} C. Wang, Q. Wu, M. Weimer, and E. Zhu, ``FLAML: A fast and lightweight AutoML library,'' in \emph{Proc.\ Machine Learning and Systems (MLSys)}, 2021.
+\bibitem{olson2016} R. S. Olson, N. Bartley, R. J. Urbanowicz, and J. H. Moore, ``Evaluation of a tree-based pipeline optimization tool for automating data science,'' in \emph{Proc.\ GECCO}, 2016.
+\bibitem{ledell2020} E. LeDell and S. Poirier, ``H2O AutoML: Scalable automatic machine learning,'' 7th ICML Workshop on Automated Machine Learning (AutoML), 2020.
+\bibitem{varma2006} S. Varma and R. Simon, ``Bias in error estimation when using cross-validation for model selection,'' \emph{BMC Bioinformatics}, vol. 7, article 91, 2006.
+\bibitem{cawley2010} G. C. Cawley and N. L. C. Talbot, ``On over-fitting in model selection and subsequent selection bias in performance evaluation,'' \emph{JMLR}, vol. 11, pp. 2079--2107, 2010.
+\bibitem{software} J. Monchwe \emph{et al.}, ReliableML-AutoML, software repository, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

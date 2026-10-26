@@ -1,0 +1,2845 @@
+{
+ "metadata": {
+  "python": "3.15.0",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "versions": {
+   "numpy": "2.5.4",
+   "pandas": "3.1.0",
+   "sklearn": "1.9.1",
+   "flaml": null,
+   "tpot": null,
+   "autogluon.tabular": null,
+   "h2o": null,
+   "autosklearn": null,
+   "reliableml_automl": "unknown",
+   "ml_reliability": "unknown"
+  },
+  "seeds": [
+   42,
+   43,
+   44
+  ],
+  "datasets": [
+   "synthetic_mixed",
+   "wine",
+   "breast_cancer",
+   "digits"
+  ],
+  "test_fraction": 0.25,
+  "budget_seconds": 60.0,
+  "frameworks": [
+   "reliableml",
+   "sklearn_logistic"
+  ]
+ },
+ "records": [
+  {
+   "framework": "reliableml",
+   "dataset": "synthetic_mixed",
+   "seed": 42,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 23.768969099968672,
+   "accuracy": 0.8166666666666667,
+   "balanced_accuracy": 0.8169642857142857,
+   "log_loss": 0.40638825435010834,
+   "info": {
+    "selected_model": "meta_pipeline",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.7658873011046925,
+      "std_score": 0.03351572500281618,
+      "outer_fold_scores": [
+       0.7185314685314685,
+       0.791304347826087,
+       0.7878260869565217
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ],
+      "selected_tuning_score": 0.7724458204334366,
+      "best_params": {
+       "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+      }
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.7528833485355224,
+      "std_score": 0.01109695033403368,
+      "outer_fold_scores": [
+       0.7412587412587412,
+       0.7495652173913043,
+       0.7678260869565217
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.752303638390595,
+      "std_score": 0.012363912483642625,
+      "outer_fold_scores": [
+       0.7412587412587412,
+       0.7695652173913043,
+       0.7460869565217392
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.7441420897942637,
+      "std_score": 0.02301300704477341,
+      "outer_fold_scores": [
+       0.715034965034965,
+       0.771304347826087,
+       0.7460869565217392
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.7389703050572617,
+      "std_score": 0.043694790618710726,
+      "outer_fold_scores": [
+       0.7412587412587412,
+       0.791304347826087,
+       0.6843478260869565
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.7013165095773792,
+      "std_score": 0.0711661293859391,
+      "outer_fold_scores": [
+       0.7569930069930071,
+       0.6008695652173913,
+       0.7460869565217392
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "prototype_compressed"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.6767244349853044,
+      "std_score": 0.10204580977674141,
+      "outer_fold_scores": [
+       0.7832167832167831,
+       0.7078260869565217,
+       0.5391304347826087
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "reliability_head"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 144,
+     "test": 36,
+     "total": 180
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 30459
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "synthetic_mixed",
+   "seed": 42,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 0.06044690002454445,
+   "accuracy": 0.85,
+   "balanced_accuracy": 0.8504464285714286,
+   "log_loss": 0.36629563914154256,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "wine",
+   "seed": 42,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 48.13807380001526,
+   "accuracy": 1.0,
+   "balanced_accuracy": 1.0,
+   "log_loss": 0.018010128230894987,
+   "info": {
+    "selected_model": "meta_pipeline",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9761904761904763,
+      "std_score": 0.019440394783993453,
+      "outer_fold_scores": [
+       1.0,
+       0.9761904761904763,
+       0.9523809523809524
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ],
+      "selected_tuning_score": 0.9748677248677249,
+      "best_params": {
+       "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+      }
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9761904761904763,
+      "std_score": 0.019440394783993453,
+      "outer_fold_scores": [
+       1.0,
+       0.9523809523809524,
+       0.9761904761904763
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9761904761904762,
+      "std_score": 0.03367175148507373,
+      "outer_fold_scores": [
+       1.0,
+       0.9285714285714285,
+       1.0
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9682539682539683,
+      "std_score": 0.029695693545824974,
+      "outer_fold_scores": [
+       1.0,
+       0.9285714285714285,
+       0.9761904761904763
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9656084656084656,
+      "std_score": 0.009353264301409326,
+      "outer_fold_scores": [
+       0.9722222222222222,
+       0.9523809523809524,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9523809523809524,
+      "std_score": 0.038880789567986955,
+      "outer_fold_scores": [
+       1.0,
+       0.9523809523809524,
+       0.9047619047619048
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.949206349206349,
+      "std_score": 0.036126370402352545,
+      "outer_fold_scores": [
+       1.0,
+       0.919047619047619,
+       0.9285714285714285
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 106,
+     "test": 27,
+     "total": 133
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 55962
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "wine",
+   "seed": 42,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 0.02208800002699718,
+   "accuracy": 1.0,
+   "balanced_accuracy": 1.0,
+   "log_loss": 0.06473396131656262,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "breast_cancer",
+   "seed": 42,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 82.6539644000004,
+   "accuracy": 0.965034965034965,
+   "balanced_accuracy": 0.9683438155136268,
+   "log_loss": 0.17469795780027186,
+   "info": {
+    "selected_model": "sc_mlp",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.965245174752217,
+      "std_score": 0.006958223880751889,
+      "outer_fold_scores": [
+       0.9742063492063492,
+       0.9572434607645876,
+       0.9642857142857143
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "uncertainty_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ],
+      "selected_tuning_score": 0.9605399792315681,
+      "best_params": {
+       "classifier__variant": "reliability_head"
+      }
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9619708994708995,
+      "std_score": 0.01668581456553292,
+      "outer_fold_scores": [
+       0.9811507936507937,
+       0.9642857142857143,
+       0.9404761904761905
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.95565522766227,
+      "std_score": 0.019617428682910065,
+      "outer_fold_scores": [
+       0.9811507936507937,
+       0.9334339369550637,
+       0.9523809523809523
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.95565522766227,
+      "std_score": 0.018137050674454744,
+      "outer_fold_scores": [
+       0.9811507936507937,
+       0.9453386988598256,
+       0.9404761904761905
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.95565522766227,
+      "std_score": 0.018137050674454744,
+      "outer_fold_scores": [
+       0.9811507936507937,
+       0.9453386988598256,
+       0.9404761904761905
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9397822117892541,
+      "std_score": 0.02931928456234234,
+      "outer_fold_scores": [
+       0.9811507936507937,
+       0.9215291750503019,
+       0.9166666666666667
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9391208361278783,
+      "std_score": 0.020105358184037945,
+      "outer_fold_scores": [
+       0.9672619047619048,
+       0.9215291750503019,
+       0.9285714285714286
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 340,
+     "test": 86,
+     "total": 426
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 256143
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "breast_cancer",
+   "seed": 42,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 0.02242399996612221,
+   "accuracy": 0.965034965034965,
+   "balanced_accuracy": 0.9683438155136268,
+   "log_loss": 0.07592360383402341,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "digits",
+   "seed": 42,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 285.4474649000331,
+   "accuracy": 0.98,
+   "balanced_accuracy": 0.9799865183687226,
+   "log_loss": 0.08479047956817926,
+   "info": {
+    "selected_model": "sc_meta",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9703060203060203,
+      "std_score": 0.006510648970541053,
+      "outer_fold_scores": [
+       0.9611025311025312,
+       0.9751415701415702,
+       0.9746739596739596
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ],
+      "selected_tuning_score": 0.9619600944129245,
+      "best_params": {
+       "classifier__meta_variant": "oof_stacking"
+      }
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9695109395109395,
+      "std_score": 0.002270821559140285,
+      "outer_fold_scores": [
+       0.9723680823680825,
+       0.9668125268125267,
+       0.9693522093522094
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9638981838981838,
+      "std_score": 0.002300673434092878,
+      "outer_fold_scores": [
+       0.9611776061776063,
+       0.9668039468039467,
+       0.9637129987129989
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9637437437437436,
+      "std_score": 0.009273620244121438,
+      "outer_fold_scores": [
+       0.9749163449163449,
+       0.964105534105534,
+       0.9522093522093522
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9546124696124697,
+      "std_score": 0.0056532518927456315,
+      "outer_fold_scores": [
+       0.9472136422136422,
+       0.9556885456885457,
+       0.960935220935221
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9537365937365937,
+      "std_score": 0.0035734525449924157,
+      "outer_fold_scores": [
+       0.94998712998713,
+       0.9585456885456883,
+       0.9526769626769627
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9525532675532675,
+      "std_score": 0.021756203164011126,
+      "outer_fold_scores": [
+       0.9218125268125268,
+       0.9668039468039467,
+       0.969043329043329
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "uncertainty_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 1078,
+     "test": 269,
+     "total": 1347
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 2483285
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "digits",
+   "seed": 42,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 0.06592860003001988,
+   "accuracy": 0.9777777777777777,
+   "balanced_accuracy": 0.9776609369733738,
+   "log_loss": 0.10340800360415026,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "synthetic_mixed",
+   "seed": 43,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 31.49569720000727,
+   "accuracy": 0.7833333333333333,
+   "balanced_accuracy": 0.7857142857142857,
+   "log_loss": 0.39003037141555674,
+   "info": {
+    "selected_model": "sc_logistic",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.8319395326260315,
+      "std_score": 0.054949668507569764,
+      "outer_fold_scores": [
+       0.8867276887871853,
+       0.8522727272727273,
+       0.7568181818181818
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ],
+      "selected_tuning_score": 0.8221418034298359,
+      "best_params": {
+       "classifier__variant": "stat_regularised"
+      }
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.8296564038554886,
+      "std_score": 0.053150585576176856,
+      "outer_fold_scores": [
+       0.8821510297482837,
+       0.85,
+       0.7568181818181818
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.8091134456695097,
+      "std_score": 0.03754916516456908,
+      "outer_fold_scores": [
+       0.8432494279176201,
+       0.8272727272727273,
+       0.7568181818181818
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.808016087649955,
+      "std_score": 0.042300439792129454,
+      "outer_fold_scores": [
+       0.8604118993135011,
+       0.8068181818181819,
+       0.7568181818181818
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.8004403300741973,
+      "std_score": 0.04340947722309357,
+      "outer_fold_scores": [
+       0.8604118993135011,
+       0.7818181818181817,
+       0.759090909090909
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.7594324249358575,
+      "std_score": 0.040754664902745895,
+      "outer_fold_scores": [
+       0.8169336384439359,
+       0.7272727272727273,
+       0.7340909090909091
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.7362561542195408,
+      "std_score": 0.03525221151337684,
+      "outer_fold_scores": [
+       0.7860411899313502,
+       0.7090909090909091,
+       0.7136363636363636
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 126,
+     "test": 54,
+     "total": 180
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 17231
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "synthetic_mixed",
+   "seed": 43,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 0.04458280000835657,
+   "accuracy": 0.8333333333333334,
+   "balanced_accuracy": 0.8392857142857143,
+   "log_loss": 0.3708134123359672,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "wine",
+   "seed": 43,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 40.49286860000575,
+   "accuracy": 0.8888888888888888,
+   "balanced_accuracy": 0.9074074074074074,
+   "log_loss": 0.22868444149418024,
+   "info": {
+    "selected_model": "meta_pipeline",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9914529914529915,
+      "std_score": 0.012087295404898205,
+      "outer_fold_scores": [
+       1.0,
+       0.9743589743589745,
+       1.0
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ],
+      "selected_tuning_score": 0.9912280701754386,
+      "best_params": {
+       "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+      }
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.982905982905983,
+      "std_score": 0.024174590809796462,
+      "outer_fold_scores": [
+       1.0,
+       0.9487179487179488,
+       1.0
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "sparse"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9821937321937323,
+      "std_score": 0.012621114776830006,
+      "outer_fold_scores": [
+       0.9722222222222222,
+       0.9743589743589745,
+       1.0
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9702408702408704,
+      "std_score": 0.003163834199145697,
+      "outer_fold_scores": [
+       0.9696969696969697,
+       0.9743589743589745,
+       0.9666666666666667
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.969017094017094,
+      "std_score": 0.022257122495726103,
+      "outer_fold_scores": [
+       0.9583333333333334,
+       0.9487179487179488,
+       1.0
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "robust_loss"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9643874643874644,
+      "std_score": 0.011080020787823355,
+      "outer_fold_scores": [
+       0.9722222222222222,
+       0.9487179487179488,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9504985754985755,
+      "std_score": 0.017056880363002944,
+      "outer_fold_scores": [
+       0.9305555555555555,
+       0.9487179487179488,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 93,
+     "test": 40,
+     "total": 133
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 51318
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "wine",
+   "seed": 43,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 0.02643179998267442,
+   "accuracy": 0.9333333333333333,
+   "balanced_accuracy": 0.9444444444444445,
+   "log_loss": 0.12779678693686844,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "breast_cancer",
+   "seed": 43,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 64.52287820004858,
+   "accuracy": 0.972027972027972,
+   "balanced_accuracy": 0.9661425576519916,
+   "log_loss": 0.12783579649795568,
+   "info": {
+    "selected_model": "meta_pipeline",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9631774631774631,
+      "std_score": 0.012222539354847151,
+      "outer_fold_scores": [
+       0.9706134706134706,
+       0.9459459459459459,
+       0.972972972972973
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ],
+      "selected_tuning_score": 0.9564839058790672,
+      "best_params": {
+       "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+      }
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9631347937799551,
+      "std_score": 0.018001389601710667,
+      "outer_fold_scores": [
+       0.9785499785499785,
+       0.9378814298169137,
+       0.972972972972973
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9578437884889498,
+      "std_score": 0.008462225256510988,
+      "outer_fold_scores": [
+       0.9626769626769627,
+       0.9459459459459459,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9533392839844453,
+      "std_score": 0.014811419533988873,
+      "outer_fold_scores": [
+       0.9626769626769627,
+       0.9324324324324325,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9532966145869372,
+      "std_score": 0.01571466152483256,
+      "outer_fold_scores": [
+       0.9570999570999571,
+       0.9324324324324325,
+       0.970357454228422
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "reliability_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "uncertainty_head"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9442876055779282,
+      "std_score": 0.009978281590871125,
+      "outer_fold_scores": [
+       0.9435864435864436,
+       0.9324324324324325,
+       0.9568439407149085
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9361077667529281,
+      "std_score": 0.027603141506215362,
+      "outer_fold_scores": [
+       0.9515229515229515,
+       0.8973408892763732,
+       0.9594594594594594
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 298,
+     "test": 128,
+     "total": 426
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 229170
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "breast_cancer",
+   "seed": 43,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 0.019924300024285913,
+   "accuracy": 0.951048951048951,
+   "balanced_accuracy": 0.9455974842767296,
+   "log_loss": 0.13215710322982016,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "digits",
+   "seed": 43,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 299.40359529998386,
+   "accuracy": 0.9844444444444445,
+   "balanced_accuracy": 0.9840816660027984,
+   "log_loss": 0.19304795580893255,
+   "info": {
+    "selected_model": "sc_knn",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9731073931073931,
+      "std_score": 0.0034549321373292183,
+      "outer_fold_scores": [
+       0.9693479193479193,
+       0.9722844272844273,
+       0.9776898326898327
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ],
+      "selected_tuning_score": 0.9608159363348043,
+      "best_params": {
+       "classifier__variant": "learnable_metric"
+      }
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9730837980837981,
+      "std_score": 0.002483553311068247,
+      "outer_fold_scores": [
+       0.9746031746031747,
+       0.975066495066495,
+       0.9695817245817245
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9683748033748033,
+      "std_score": 0.007871867840185367,
+      "outer_fold_scores": [
+       0.9775353925353925,
+       0.9583161733161732,
+       0.9692728442728443
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9619948519948519,
+      "std_score": 0.0014422551634670786,
+      "outer_fold_scores": [
+       0.9607850707850709,
+       0.9611776061776063,
+       0.9640218790218789
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9573344773344775,
+      "std_score": 0.008877484754103602,
+      "outer_fold_scores": [
+       0.968968253968254,
+       0.9474302874302876,
+       0.9556048906048906
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "uncertainty_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9537072787072788,
+      "std_score": 0.008942001273391903,
+      "outer_fold_scores": [
+       0.9634877734877735,
+       0.941874731874732,
+       0.9557593307593308
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9526004576004578,
+      "std_score": 0.010368482920107861,
+      "outer_fold_scores": [
+       0.9634126984126985,
+       0.9557722007722008,
+       0.9386164736164737
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 1079,
+     "test": 268,
+     "total": 1347
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 2102248
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "digits",
+   "seed": 43,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 0.0680910000228323,
+   "accuracy": 0.9733333333333334,
+   "balanced_accuracy": 0.9730626283052978,
+   "log_loss": 0.10340600334138475,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "synthetic_mixed",
+   "seed": 44,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 16.231533799960744,
+   "accuracy": 0.7833333333333333,
+   "balanced_accuracy": 0.7767857142857143,
+   "log_loss": 0.41267006697800745,
+   "info": {
+    "selected_model": "meta_pipeline",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.7484625519408127,
+      "std_score": 0.04968584630454387,
+      "outer_fold_scores": [
+       0.6993006993006994,
+       0.8165217391304347,
+       0.7295652173913043
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       }
+      ],
+      "selected_tuning_score": 0.7426470588235294,
+      "best_params": {
+       "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+      }
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.741545555893382,
+      "std_score": 0.05500915189615814,
+      "outer_fold_scores": [
+       0.7220279720279721,
+       0.8165217391304347,
+       0.6860869565217391
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.7389642241816156,
+      "std_score": 0.025928825391449615,
+      "outer_fold_scores": [
+       0.7377622377622377,
+       0.771304347826087,
+       0.7078260869565217
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.7351352994831255,
+      "std_score": 0.057951833456733604,
+      "outer_fold_scores": [
+       0.7027972027972028,
+       0.8165217391304347,
+       0.6860869565217391
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.7206425458599371,
+      "std_score": 0.03767582222072907,
+      "outer_fold_scores": [
+       0.7027972027972028,
+       0.7730434782608695,
+       0.6860869565217391
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.705421100638492,
+      "std_score": 0.06490351261022421,
+      "outer_fold_scores": [
+       0.6171328671328671,
+       0.771304347826087,
+       0.7278260869565217
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "uncertainty_head"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.6745039018952063,
+      "std_score": 0.023806293734146475,
+      "outer_fold_scores": [
+       0.6730769230769231,
+       0.7043478260869566,
+       0.6460869565217391
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "prototype_compressed"
+       },
+       {
+        "classifier__variant": "prototype_compressed"
+       },
+       {
+        "classifier__variant": "prototype_compressed"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 144,
+     "test": 36,
+     "total": 180
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 30037
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "synthetic_mixed",
+   "seed": 44,
+   "n_development": 180,
+   "n_test": 60,
+   "n_features": 4,
+   "n_classes": 2,
+   "wall_seconds": 0.020035400055348873,
+   "accuracy": 0.8,
+   "balanced_accuracy": 0.7946428571428572,
+   "log_loss": 0.37366020230767866,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "wine",
+   "seed": 44,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 33.886301500024274,
+   "accuracy": 0.9555555555555556,
+   "balanced_accuracy": 0.9629629629629629,
+   "log_loss": 0.4377076247785568,
+   "info": {
+    "selected_model": "perf_meta_select",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9814814814814815,
+      "std_score": 0.013094570021973107,
+      "outer_fold_scores": [
+       1.0,
+       0.9722222222222222,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ],
+      "selected_tuning_score": 0.9907407407407407,
+      "best_params": {
+       "classifier__cv": 2
+      }
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9814814814814815,
+      "std_score": 0.013094570021973107,
+      "outer_fold_scores": [
+       1.0,
+       0.9722222222222222,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9796296296296297,
+      "std_score": 0.014581496062984835,
+      "outer_fold_scores": [
+       1.0,
+       0.9666666666666667,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.972934472934473,
+      "std_score": 0.0010072746170749027,
+      "outer_fold_scores": [
+       0.9743589743589745,
+       0.9722222222222222,
+       0.9722222222222222
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9636752136752138,
+      "std_score": 0.013626158454208663,
+      "outer_fold_scores": [
+       0.9743589743589745,
+       0.9722222222222222,
+       0.9444444444444445
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9636752136752137,
+      "std_score": 0.03484937271431646,
+      "outer_fold_scores": [
+       0.9743589743589745,
+       1.0,
+       0.9166666666666666
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.926329534662868,
+      "std_score": 0.032616952618734485,
+      "outer_fold_scores": [
+       0.8993589743589744,
+       0.9722222222222222,
+       0.9074074074074074
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "uncertainty_head"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 93,
+     "test": 40,
+     "total": 133
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 40918
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "wine",
+   "seed": 44,
+   "n_development": 133,
+   "n_test": 45,
+   "n_features": 13,
+   "n_classes": 3,
+   "wall_seconds": 0.0299966000020504,
+   "accuracy": 0.9555555555555556,
+   "balanced_accuracy": 0.9537037037037037,
+   "log_loss": 0.07242976980553216,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "breast_cancer",
+   "seed": 44,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 72.40011729998514,
+   "accuracy": 0.951048951048951,
+   "balanced_accuracy": 0.9611111111111111,
+   "log_loss": 0.12106604633525508,
+   "info": {
+    "selected_model": "sc_mlp",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9643922360390951,
+      "std_score": 0.01611919764809662,
+      "outer_fold_scores": [
+       0.9443972835314092,
+       0.9838709677419355,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "uncertainty_head"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "uncertainty_head"
+       }
+      ],
+      "selected_tuning_score": 0.9767665130568357,
+      "best_params": {
+       "classifier__variant": "reliability_head"
+      }
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9592988574312852,
+      "std_score": 0.0336492478572496,
+      "outer_fold_scores": [
+       0.9129881154499151,
+       0.9919354838709677,
+       0.972972972972973
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     },
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9592988574312852,
+      "std_score": 0.029208393673063045,
+      "outer_fold_scores": [
+       0.9210526315789473,
+       0.9919354838709677,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9539225133452639,
+      "std_score": 0.02366450813623361,
+      "outer_fold_scores": [
+       0.9210526315789473,
+       0.9758064516129032,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "risk_calibrated"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9494180088407592,
+      "std_score": 0.022396821270886286,
+      "outer_fold_scores": [
+       0.9210526315789473,
+       0.9758064516129032,
+       0.9513949433304272
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9370134140932104,
+      "std_score": 0.030398850484396507,
+      "outer_fold_scores": [
+       0.8947368421052632,
+       0.9513949433304272,
+       0.9649084568439408
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9272511050949083,
+      "std_score": 0.032312739779851676,
+      "outer_fold_scores": [
+       0.881578947368421,
+       0.9487794245858763,
+       0.9513949433304272
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "shrinkage"
+       },
+       {
+        "classifier__variant": "sparse"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 298,
+     "test": 128,
+     "total": 426
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 229907
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "breast_cancer",
+   "seed": 44,
+   "n_development": 426,
+   "n_test": 143,
+   "n_features": 30,
+   "n_classes": 2,
+   "wall_seconds": 0.02148599998326972,
+   "accuracy": 0.965034965034965,
+   "balanced_accuracy": 0.9722222222222222,
+   "log_loss": 0.0681763353056246,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  },
+  {
+   "framework": "reliableml",
+   "dataset": "digits",
+   "seed": 44,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 285.20386410003994,
+   "accuracy": 0.9755555555555555,
+   "balanced_accuracy": 0.9757353106392541,
+   "log_loss": 0.10012068146626092,
+   "info": {
+    "selected_model": "sc_meta",
+    "leaderboard_size": 7,
+    "leaderboard": [
+     {
+      "model": "sc_meta",
+      "status": "ok",
+      "mean_score": 0.9646178110883993,
+      "std_score": 0.011379991384861572,
+      "outer_fold_scores": [
+       0.9552155096272743,
+       0.958007293007293,
+       0.9806306306306306
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       },
+       {
+        "classifier__meta_variant": "oof_stacking"
+       }
+      ],
+      "selected_tuning_score": 0.970361366446272,
+      "best_params": {
+       "classifier__meta_variant": "oof_stacking"
+      }
+     },
+     {
+      "model": "sc_knn",
+      "status": "ok",
+      "mean_score": 0.9608847923553805,
+      "std_score": 0.01216342702422614,
+      "outer_fold_scores": [
+       0.9552905847023494,
+       0.9495945945945945,
+       0.9777691977691976
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "learnable_metric"
+       },
+       {
+        "classifier__variant": "stat_k_selection"
+       },
+       {
+        "classifier__variant": "learnable_metric"
+       }
+      ]
+     },
+     {
+      "model": "sc_lda",
+      "status": "ok",
+      "mean_score": 0.9583719433719434,
+      "std_score": 0.006044697490209933,
+      "outer_fold_scores": [
+       0.9667417417417419,
+       0.9526812526812526,
+       0.9556928356928356
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "heteroscedastic"
+       },
+       {
+        "classifier__variant": "shrinkage"
+       }
+      ]
+     },
+     {
+      "model": "sc_mlp",
+      "status": "ok",
+      "mean_score": 0.9546887223357811,
+      "std_score": 0.011720078111849956,
+      "outer_fold_scores": [
+       0.9583068362480127,
+       0.9388717288717288,
+       0.966887601887602
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "sc_logistic",
+      "status": "ok",
+      "mean_score": 0.9506407247583719,
+      "std_score": 0.015786362531562244,
+      "outer_fold_scores": [
+       0.9355944179473592,
+       0.9438803088803089,
+       0.9724474474474475
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__variant": "risk_calibrated"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       },
+       {
+        "classifier__variant": "stat_regularised"
+       }
+      ]
+     },
+     {
+      "model": "meta_pipeline",
+      "status": "ok",
+      "mean_score": 0.9488198702904583,
+      "std_score": 0.010646682915110568,
+      "outer_fold_scores": [
+       0.9414016958134604,
+       0.9411818961818961,
+       0.9638760188760187
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__meta_classifier": "LogisticRegression(max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=0.5, max_iter=1000)"
+       },
+       {
+        "classifier__meta_classifier": "LogisticRegression(C=2.0, max_iter=1000)"
+       }
+      ]
+     },
+     {
+      "model": "perf_meta_select",
+      "status": "ok",
+      "mean_score": 0.9396120910826792,
+      "std_score": 0.013288531221027895,
+      "outer_fold_scores": [
+       0.9303656597774245,
+       0.9300664950664951,
+       0.9584041184041183
+      ],
+      "outer_fold_best_params": [
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       },
+       {
+        "classifier__cv": 2
+       }
+      ]
+     }
+    ],
+    "partition_sizes": {
+     "train": 1078,
+     "test": 269,
+     "total": 1347
+    },
+    "n_warnings": 1,
+    "cleaning_report_keys": [
+     "cleaning_intensity",
+     "data_integrity",
+     "ordinal_features",
+     "scaling_strategy",
+     "statistical_cleaning"
+    ],
+    "fit_report_keys": [
+     "cleaning",
+     "leaderboard",
+     "partition_sizes",
+     "partitioner",
+     "selection",
+     "target_column",
+     "warnings"
+    ],
+    "predict_with_report": {
+     "type": "ReliabilityReport",
+     "fields": [
+      "bootstrap_samples",
+      "chi_square_alpha",
+      "confidence_intervals",
+      "confidence_level",
+      "covariate_shift_detected",
+      "drift_threshold",
+      "drifted_features",
+      "evaluation",
+      "features",
+      "mean_psi",
+      "sample_count",
+      "similarity_score"
+     ]
+    },
+    "saved_artifact_files": 1,
+    "saved_artifact_bytes": 2482839
+   }
+  },
+  {
+   "framework": "sklearn_logistic",
+   "dataset": "digits",
+   "seed": 44,
+   "n_development": 1347,
+   "n_test": 450,
+   "n_features": 64,
+   "n_classes": 10,
+   "wall_seconds": 0.06567609997000545,
+   "accuracy": 0.9644444444444444,
+   "balanced_accuracy": 0.9645164486114941,
+   "log_loss": 0.11842232839322527,
+   "info": {
+    "selected_model": "LogisticRegression"
+   }
+  }
+ ]
+}

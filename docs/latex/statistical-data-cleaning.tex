@@ -1,0 +1,121 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{A Leakage-Aware Statistical Data-Cleaning Stage for Reliable Classification}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+\and
+\minenhleauthor
+}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, Mfundo Monchwe, and Minenhle Mchunu}}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Missing-value imputation and outlier treatment are often implemented as ad hoc preprocessing steps, even though fitted cleaning rules can leak information across evaluation partitions or alter meaningful tail behavior. This paper documents the conservative light-mode cleaner integrated into ReliableML from Minenhle Mchunu's StatisticalDataCleaning prototype. The sklearn-compatible transformer learns feature-specific imputation values and interquartile-range diagnostics from its fit data, preserves the input feature schema, and imputes missing values without capping outliers in its default mode. Binary numeric features use the mode; approximately symmetric numeric features use the mean; other numeric features use the median; and categorical features use the mode or an explicit missing sentinel. An entirely missing numeric feature triggers a warning and is filled with zero while being marked uninformative. Moderate and heavy modes optionally cap at fit-time IQR bounds. The paper defines each rule, explains the train/test integration, and discusses assumptions and failure conditions. The current implementation deliberately leaves encoding and model-driven feature selection to later pipeline stages, where they can be fitted within resampling folds. It is a documented implementation contribution, not evidence that one imputation rule is optimal for every missingness mechanism or domain.
+\end{abstract}
+
+\begin{IEEEkeywords}
+data cleaning, missing data, outlier treatment, leakage prevention, preprocessing, statistical machine learning
+\end{IEEEkeywords}
+
+\section{Introduction}
+An analytical model cannot repair unexamined data defects. Missing entries can arise through distinct mechanisms, while extreme values may be errors, rare valid cases, or the principal signal of an emerging event. Imputation and outlier treatment therefore encode assumptions about the measurement process and the target population \cite{rubin1976,little2002,tukey1977}.
+
+ReliableML provides an optional \code{StatisticalDataCleaner} transformer and a functional \code{clean\_statistical\_data} interface. The implementation is based on a StatisticalDataCleaning prototype supplied by Minenhle Mchunu and is integrated as a fit/transform stage ahead of encoding and classification. The default is intentionally conservative light mode: missing values are imputed using fit-time statistics, outliers are reported but not capped, and the original feature columns are retained.
+
+\subsection{Problem statement and motivation}
+Cleaning before a train/test split lets validation observations influence imputation values, outlier bounds, feature encoding, or feature selection. This makes subsequent estimates optimistic or changes the estimand. Conversely, deleting or clipping tail observations automatically can erase valid minority behavior. A useful default should make assumptions visible, fit only on the data supplied to its \code{fit} method, preserve raw feature meaning, and expose stronger alterations as explicit options.
+
+\subsection{Aim and objectives}
+The aim is to specify a simple, auditable cleaning stage for tabular classification that integrates with scikit-learn pipelines. The objectives are to: (1) describe per-type missing-value rules; (2) record numeric IQR outlier diagnostics without modifying tails by default; (3) make stronger capping choices explicit; (4) preserve fitted transformations for use on later batches; and (5) keep cleaning inside cross-validation and model pipelines to reduce leakage.
+
+\section{Background}
+\subsection{Missing-data assumptions}
+Rubin distinguishes missing completely at random, missing at random conditional on observed data, and missing not at random \cite{rubin1976}. These assumptions concern the missingness mechanism, not merely the observed column distribution. Mean, median, and mode imputation are deterministic single-imputation strategies. They do not generally propagate imputation uncertainty, recover missing-not-at-random mechanisms, or preserve multivariate dependence. They are operational baselines for a pipeline, not universal statistical solutions \cite{little2002}.
+
+\subsection{Outlier fences}
+Tukey's boxplot convention marks values beyond \(Q_1-1.5IQR\) and \(Q_3+1.5IQR\) for investigation \cite{tukey1977}. These are descriptive fences; under skewness, discrete measurements, or heavy tails, they need not identify erroneous observations. A flag is therefore not a deletion instruction. Winsorization or capping can improve robustness for some estimators but changes the empirical distribution and can suppress rare signal.
+
+\section{Cleaning transformer}
+Let \(X=(x_{ij})\) be an \(n\times p\) DataFrame supplied to \code{fit}. The transformer records feature names, numeric columns, per-feature missing counts, imputation values, and numeric IQR bounds. Its \code{transform} method requires the same feature names in the same order. The learned statistics are then applied to a new DataFrame without refitting.
+
+\subsection{Data integrity and feature types}
+The supported input is a non-empty pandas DataFrame with unique string feature names. Datetime columns must be converted before cleaning. Numeric infinities are rejected because they are not valid observations for the stated mean, quantile, or IQR rules. Mixed categorical scalar types and downstream one-hot encoding are handled by the subsequent ReliableML model preprocessor, not recast by this cleaner. The transformer preserves row indices and the original feature schema.
+
+\subsection{Numeric missing-value rules}
+For a numeric feature \(X_j\), let \(\mathcal{O}_j=\{x_{ij}:x_{ij}\text{ observed}\}\). Binary numeric features, defined as having no more than two observed unique values, are imputed with the observed mode. A non-binary feature is treated as approximately normal only if there are at least ten observations, the mean-median difference is at most \(0.1\) times the population standard deviation, absolute sample skewness is below \(0.5\), and absolute excess kurtosis is below \(1.5\). For this heuristic group,
+\[
+\widehat\mu_j=\frac{1}{|\mathcal{O}_j|}
+\sum_{x\in\mathcal{O}_j}x
+\]
+is used for imputation. Otherwise the imputation value is the sample median:
+\[
+\widehat m_j=\operatorname{median}(\mathcal{O}_j).
+\]
+This rule is a deterministic operational heuristic, not a normality hypothesis test. Mean imputation is sensitive to skewness and extreme values; median imputation is more robust but can distort variance and dependence. These effects should be considered before downstream inference.
+
+If a numeric feature is entirely missing, no sample-based location is identifiable. The implementation emits a warning, marks the feature uninformative in its cleaning report, and fills with zero to allow an explicit downstream decision. Users should review or remove that feature rather than interpret zero as an estimated central value. An all-missing categorical feature is assigned the explicit sentinel \code{\_\_reliableml\_missing\_\_}; observed categorical columns use the most frequent observed value.
+
+\subsection{Outlier diagnostics and intensity}
+For each numeric feature, the fitted cleaner computes
+\[
+IQR_j=Q_{3j}-Q_{1j},\qquad
+L_j=Q_{1j}-k IQR_j,\qquad
+U_j=Q_{3j}+k IQR_j,
+\]
+with \(k=1.5\) for light and moderate modes, and \(k=1.0\) for heavy mode. An observed training value is flagged when it is below \(L_j\) or above \(U_j\). In light mode the transform only imputes missing values; it leaves all observed numeric values unchanged. In moderate and heavy modes, the transformed numeric value is clipped to \([L_j,U_j]\). Bounds are learned on fit data and reused unchanged for transformation, so an incoming extreme is not allowed to alter its own reference limits.
+
+The light cleaner report includes the intensity, fit-time missing counts, outlier flags, all-missing numeric features, and whether capping was applied. It records diagnostics, not a statistical test, posterior probability, or assertion that a flagged observation is invalid.
+
+\subsection{Pipeline placement and prevention of leakage}
+In ordinary supervised learning, cleaning must be fitted separately inside each training fold. Given a fold-specific cleaner \(\widehat T^{(-v)}\), the classifier is trained using
+\[
+\widehat f^{(-v)}
+=\operatorname{Fit}\left(
+\widehat T^{(-v)}(X_{\mathrm{train}}^{(-v)}),
+y_{\mathrm{train}}^{(-v)}
+\right),
+\]
+and evaluated using the same fitted transformation on the held-out fold:
+\[
+\widehat y_{\mathrm{valid}}^{(-v)}
+=\widehat f^{(-v)}
+\left(\widehat T^{(-v)}(X_{\mathrm{valid}}^{(-v)})\right).
+\]
+When evaluating a model with cross-validation, place the cleaner inside the estimator's scikit-learn pipeline so that cleaning rules are refit on each training fold. This prevents information from validation folds from influencing imputation or outlier caps.
+
+\subsection{Functional interface}
+The functional API is equivalent to fitting and transforming one table:
+\[
+\operatorname{clean\_statistical\_data}(X;\text{intensity})
+=\widehat T(X).
+\]
+By default it returns the cleaned DataFrame in light mode. With \code{return\_cleaner=True}, it returns the transformed data and fitted transformer, which can be retained and reused. The estimator API is preferred when cleaning must be composed with cross-validation or deployed inference.
+
+\section{Implementation verification}
+The software tests exercise missing numeric and categorical values, light-mode outlier preservation, stronger-mode capping, feature-name preservation, and the default intensity. These are implementation checks on synthetic fixtures. They do not identify which imputation strategy minimizes risk on an external dataset, and they do not validate the missingness or tail model in any particular application.
+
+\section{Limitations}
+Single-value imputation underestimates uncertainty and may distort correlations. The approximate-normality decision is deliberately heuristic and can be unstable with small samples. The IQR fence is a marginal univariate rule; it does not identify multivariate anomalies and can overflag legitimate skewed data. Capping can compress meaningful extremes, which is why light mode does not cap by default. Zero fill for an entirely missing numeric column is an explicit software fallback, not a statistical estimate. No missingness model, multiple imputation, domain-specific outlier review, categorical encoding, scaling, or supervised feature selection is performed by this transformer. Those choices require additional analysis and must remain inside the training resampling design.
+
+\section{Conclusion}
+The integrated light cleaner makes fit-time missing-value rules and outlier diagnostics explicit while preserving observed tails by default. Moderate and heavy modes expose stronger IQR capping as a user choice. Keeping the transformer at the start of a fitted pipeline makes the training/inference transformation reproducible and helps prevent leakage across resampling folds. Appropriate use still requires domain review of missingness, all-missing variables, and flagged observations.
+
+\begin{thebibliography}{6}
+\bibitem{rubin1976} D. B. Rubin, ``Inference and missing data,'' \emph{Biometrika}, vol. 63, no. 3, pp. 581--592, 1976.
+\bibitem{little2002} R. J. A. Little and D. B. Rubin, \emph{Statistical Analysis with Missing Data}, 2nd ed. Wiley, 2002.
+\bibitem{tukey1977} J. W. Tukey, \emph{Exploratory Data Analysis}. Addison-Wesley, 1977.
+\bibitem{software} J. Monchwe, \emph{ReliableML}, software, 2026. \projecturl.
+\bibitem{attp} J. Monchwe, \emph{ATTP}, software. \url{https://github.com/Jabualani/ATTP}.
+\bibitem{scikit} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+
+\section*{Contributor statement}
+Minenhle Mchunu contributed the StatisticalDataCleaning prototype from which the light missing-value and IQR outlier-handling stage was adapted. ReliableML integration and the manuscript describe the narrower, pipeline-safe functionality implemented here; they do not claim to reproduce every notebook-stage feature-selection and transformation experiment in the source prototype.
+\end{document}

@@ -1,0 +1,339 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\usepackage{booktabs}
+\usepackage{array}
+\title{Regularized, Calibrated, and Robust Linear Models in StatCore: Algorithms and Reliability Evaluation}
+\author{\jabulaniauthor\and\martinchanzauthor\and\oloratoauthor\and\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+We give a code-faithful account of the NumPy-based StatCore multinomial logistic classifier and scalar ridge regressor (the classifier uses SciPy L-BFGS-B; ridge uses NumPy linear algebra), each exposing \code{base}, \code{risk\_calibrated}, \code{stat\_regularised}, and \code{robust\_loss}. For logistic regression, we derive the weighted softmax cross-entropy objective, its gradient, temperature fitting, cross-validated penalty selection, and the finite reweighting procedure for high-loss cases. For ridge regression, we derive the regularized normal equations, split-based linear recalibration and residual intervals, the implemented generalized cross-validation (GCV) criterion, and Huber-type iteratively reweighted least squares. We distinguish theoretical properties of the underlying estimators from properties the code does not ensure, including calibration, valid conformal coverage, global convergence, or robustness. Five-seed comparisons against scikit-learn standard references show that gains depend strongly on the scenario: logistic robust loss improves the deliberately noisy/outlier classification cases but can harm clean log-loss, while robust ridge is notably helpful under response outliers. The paper reports negative and neutral results as well as gains.
+\end{abstract}
+\begin{IEEEkeywords}
+logistic regression, ridge regression, probability calibration, robust estimation, generalized cross-validation, conformal prediction
+\end{IEEEkeywords}
+
+\section{Introduction}
+Multinomial logistic regression estimates conditional class probabilities through the softmax of affine scores, while ridge regression solves penalized least squares with an unpenalized intercept \cite{mccullagh1989,hoerl1970}. Both are useful linear references, but their reliability depends on regularization, outliers, probability calibration, and the split design. StatCore provides NumPy-based estimators with a SciPy L-BFGS-B optimizer for logistic regression and direct linear solves for ridge. This paper formalizes the exact behavior in \code{src/ml\_reliability/statcore/linear/linear.py}; the four variant names are implementation options, not claims of new estimators.
+
+\section{Data contract and notation}
+The shared validator converts inputs to finite floating-point matrices, requires two-dimensional \(X\), at least two training rows, a nonempty feature dimension, and matching one-dimensional labels. Logistic labels are mapped in sorted \code{numpy.unique} order; at least two classes are required. Ridge converts responses to finite floats. For all modes, \code{Standardizer} uses column means and population standard deviations computed over the full \(X\) passed to \code{fit}; any scale \(\leq10^{-12}\) is replaced by 1. Thus \(z_{ij}=(x_{ij}-\bar{x}_j)/s_j\). For split-based variants, scaling occurs before splitting, so validation covariates contribute to the fitted scaling statistics. This is an implementation detail and a source of mild information leakage in the internal split.
+
+\section{Multinomial logistic regression}
+\subsection{Reference method and objective}
+Let \(C\) be the class count, \(Z\in\mathbb R^{n\times d}\) standardized features, \(Y\in\{0,1\}^{n\times C}\) one-hot responses, \(W\in\mathbb R^{C\times d}\), and \(b\in\mathbb R^C\). The logits and class probabilities are
+\begin{equation}
+\eta_i=Wz_i+b,\qquad p_{ic}=\frac{\exp(\eta_{ic})}{\sum_{r=1}^C\exp(\eta_{ir})}.
+\label{eq:softmax}
+\end{equation}
+For nonnegative sample weights \(a_i\), define \(\bar a_i=a_i/\sum_j a_j\); default weights are one. StatCore minimizes
+\begin{equation}
+J(W,b)=-\sum_{i=1}^n\bar a_i\sum_{c=1}^C Y_{ic}\log p_{ic}
++\frac{\alpha}{2}\|W\|_F^2.
+\label{eq:logistic-obj}
+\end{equation}
+The intercept is not penalized. The default \(\alpha=10^{-2}\), \code{max\_iter}=300. For an unweighted fit, loss is mean NLL, not total NLL. Stable softmax subtracts each row maximum, and log probabilities in the objective are clipped below at \(10^{-300}\). Given \(G_{ic}=\bar a_i(p_{ic}-Y_{ic})\), differentiation yields
+\begin{equation}
+\nabla_WJ=G^\top Z+\alpha W,\qquad \nabla_bJ=\sum_iG_i.
+\label{eq:logistic-grad}
+\end{equation}
+The implementation initializes all parameters at zero and calls SciPy \code{minimize(method="L-BFGS-B", jac=True)} with \code{maxiter}; it does not inspect or expose the optimizer's convergence flag. Convexity of (\ref{eq:logistic-obj}) for \(\alpha\geq0\) gives a global minimizer (though it need not be unique in unregularized degenerate data), but finite L-BFGS-B termination does not prove that it reached one. No explicit validation rejects negative \code{alpha}; for a negative penalty the objective need not be convex or bounded.
+
+\begin{enumerate}
+\item Fit the population-mean/standard-deviation scaler and encode sorted class labels as one-hot rows.
+\item Initialize \((W,b)=0\); evaluate (\ref{eq:logistic-obj}) and gradient (\ref{eq:logistic-grad}) in each L-BFGS-B step, up to \code{max\_iter}.
+\item Store class coefficients, intercept, and the selected variant's temperature (one by default).
+\item At prediction, standardize with the stored scaler, compute affine logits divided by temperature, and return softmax, maximum probability, or the sorted class at the largest logit.
+\end{enumerate}
+
+\subsection{\code{risk\_calibrated}: held-out scalar temperature}
+This mode partitions indices using the shared seeded splitter, stratified by encoded label, with default \code{calib\_fraction}=0.25 and \code{random\_state}=0. The classifier is fitted on the training indices only, using fixed \(\alpha\), then held-out logits \(q_i=Wz_i+b\) are evaluated. For \(u=\log T\), the scalar objective is
+\begin{equation}
+L(u)=-\frac{1}{|H|}\sum_{i\in H}\log\operatorname{softmax}(q_i/e^u)_{y_i}.
+\label{eq:temp}
+\end{equation}
+A 60-iteration golden-section search minimizes this function on \([-3,3]\); therefore \(T\in[e^{-3},e^3]\). Temperature rescales logits but leaves their argmax unchanged for positive \(T\), so it can change probability sharpness and log-loss but not accuracy (except ties/numerics). The classifier is not refit on calibration rows. This is a scalar calibration fit, not a guaranteed calibration procedure: one holdout, finite optimization range, small class counts, or distribution changes can yield worse calibration or log-loss. The random splitter keeps at least one row of a class in training when possible; it does not validate that \code{calib\_fraction} is in \((0,1)\).
+\begin{enumerate}
+\item Scale using all input rows, make one stratified train/holdout split, and fit (\ref{eq:logistic-obj}) on the split's training subset.
+\item Minimize (\ref{eq:temp}) by 60 golden-section steps over \(u\in[-3,3]\); store \(T=e^{\hat u}\).
+\item Divide inference logits by \(T\), then apply softmax. Do not refit coefficients on the holdout.
+\end{enumerate}
+The fit uses one optimizer run plus 60 operations on cached holdout logits, the latter costing \(O(60|H|C)\). The train fit costs approximately \(O(I n d C)\) for \(I\leq300\) iterations, plus L-BFGS-B memory linear in parameter count times its internal history.
+
+\subsection{\code{stat\_regularised}: stratified cross-validation over \(\alpha\)}
+The default grid is \(\{10^{-4},10^{-3},10^{-2},10^{-1},1,10\}\); a user-provided \code{alpha\_grid} must be nonnegative. Fold count is implemented as
+\begin{equation}
+K=\max\left(2,\min\left(\code{cv},\;\max(2,n_{\min}),\;n\right)\right),
+\label{eq:kfold}
+\end{equation}
+where \(n_{\min}\) is the smallest class count. The shared deterministic stratifier distributes shuffled class indices cyclically across fold IDs. For each grid value, one fit per fold uses \code{max\_iter}=100; selection minimizes total held-out categorical NLL divided by \(n\). The selected value is stored as \code{alpha\_}, then the final estimator is refitted on all rows using \code{max\_iter}. The scaler is fitted once before CV, using all rows, rather than refit within each fold. Thus score selection includes a small unsupervised validation-feature leak and its scores are not an outer estimate of generalization. With fewer than two rows in a class, the nominal minimum \(K=2\) may leave validation folds lacking that class; classes are nevertheless encoded from full training labels. The grid and CV controls are \code{alpha\_grid=None}, \code{cv=5}, and \code{random\_state=0}.
+
+This is discrete empirical log-loss selection, not a closed-form statistical regularizer. For \(G\) grid values, cost is approximately \(G K\) fits of up to 100 iterations plus the final fit; default \(G=6,K\leq5\). It provides no unbiased performance estimate after selecting the minimum. If a grid is empty or CV parameters are invalid, failures can occur in array selection/fold generation.
+\begin{enumerate}
+\item Fit one scaler on all supplied training features, encode labels, determine \(K\) by (\ref{eq:kfold}) and build fixed seeded stratified folds.
+\item For each nonnegative \(\alpha\), fit each fold with 100 L-BFGS-B iterations and sum held-out NLL; select the lowest average-per-row score.
+\item Refit with selected \(\alpha\) and \code{max\_iter}; expose the score mapping as \code{cv\_scores\_}.
+\end{enumerate}
+
+\subsection{\code{robust\_loss}: finite high-NLL reweighting}
+This variant starts with \(a_i^{(0)}=1\) and performs exactly six outer rounds, each fitting (\ref{eq:logistic-obj}) with normalized current weights. For fitted true-label probabilities, define \(\ell_i=-\log\max(p_{i,y_i},10^{-12})\). Let \(m_\ell=\operatorname{median}(\ell_i)\), \(s_\ell=1.4826\operatorname{median}|\ell_i-m_\ell|+10^{-6}\), and cutoff \(c=m_\ell+1.345s_\ell\). The next weights are
+\begin{equation}
+a_i^{(t+1)}=\begin{cases}1,&\ell_i\leq c,\\c/\ell_i,&\ell_i>c.\end{cases}
+\label{eq:logistic-weights}
+\end{equation}
+The code sets the final \code{sample\_weights\_} to the last updated vector, but its final stored coefficients were fitted using the weights from the preceding round. Reweighting discounts observations the current classifier predicts with large NLL; it is Huber-type rather than an exact minimizer of a fixed Huber loss, because the scale/cutoff and weights are recomputed from current residuals and the number of rounds is fixed. There is no convergence test or breakdown-point guarantee. Numerically, NumPy's vectorized \code{where} computes \(c/\ell_i\) even on the inlier branch; a zero NLL can emit a divide-by-zero warning although the selected weight is one. The mode costs at most six optimizer runs, or about \(6\times300\) L-BFGS-B iterations.
+\begin{enumerate}
+\item Initialize unit sample weights.
+\item Repeat six times: fit weighted cross-entropy (\ref{eq:logistic-obj}), compute in-sample true-class NLLs, robust median/MAD scale, and weights (\ref{eq:logistic-weights}).
+\item Retain the coefficients from the sixth fit and the weights produced after it; use the ordinary softmax at inference.
+\end{enumerate}
+
+\section{Ridge regression}
+\subsection{Reference estimator and closed form}
+Let \(z_i\) be standardized feature rows, \(A=[\mathbf 1,Z]\), \(\beta=(b,w^\top)^\top\). For weights \(a_i\), StatCore's solver returns
+\begin{equation}
+\begin{split}
+\hat\beta&=(A^\top D_a A+\alpha P+10^{-10}I_{d+1})^{-1}A^\top D_a y,\\
+P&=\operatorname{diag}(0,1,\ldots,1),
+\end{split}
+\label{eq:ridge-solve}
+\end{equation}
+implemented by \code{numpy.linalg.solve} (not an explicit matrix inverse). This is the unique minimizer, when the system is positive definite, of
+\begin{equation}
+\sum_i a_i(y_i-b-w^\top z_i)^2+\alpha\|w\|_2^2+10^{-10}(b^2+\|w\|_2^2).
+\label{eq:ridge-obj}
+\end{equation}
+The small stabilizer technically penalizes the intercept too, despite the main ridge penalty leaving it unpenalized. With \(\alpha=1\) and unit weights this is the base variant. Differentiating the quadratic objective gives (\ref{eq:ridge-solve}); the positive diagonal stabilizer makes the augmented normal matrix positive definite in exact arithmetic. The solve costs \(O(nd^2+d^3)\) with \(O(d^2)\) storage; forming the Gram matrix is often the bottleneck for large \(d\), and no iterative sparse solver is used.
+\begin{enumerate}
+\item Standardize from all input features; append an intercept column.
+\item Form the weighted Gram matrix and right-hand side; add \(\alpha P+10^{-10}I\).
+\item Solve the linear system; store feature coefficients and intercept. Inference is affine in standardized input.
+\end{enumerate}
+
+\subsection{\code{risk\_calibrated}: split recalibration and residual interval}
+Using the unstratified seeded holdout splitter with default fraction 0.25, coefficients are fitted only on training rows. On holdout prediction \(q_i\), when there are at least three holdout rows and \(\operatorname{sd}(q)>10^{-12}\), the code computes
+\begin{equation}
+b_c=\frac{\widehat{\operatorname{Cov}}_{\mathrm{pop}}(q,y)}{\operatorname{Var}_{\mathrm{pop}}(q)},\qquad a_c=\bar y-b_c\bar q,
+\label{eq:recal}
+\end{equation}
+with population covariance/variance, and inference returns \(a_c+b_cq\). Otherwise it keeps \((a_c,b_c)=(0,1)\). It then sorts absolute residuals \(|y_i-(a_c+b_cq_i)|\) from those same holdout rows. At requested level \(\ell\in(0,1)\), with \(m\) residuals, the reported radius is
+\begin{equation}
+k=\min(\lceil(m+1)\ell\rceil,m)-1,\quad
+q_\ell=r_{(\max(k,0))},
+\label{eq:interval-q}
+\end{equation}
+using zero-based indexing in code; returned interval is prediction \(\pm q_\ell\). This exact quantile is clipped to the largest available residual when \(\ell\) is high. It resembles split-conformal intervals \cite{vovk2005}, but it is not a valid split-conformal construction as implemented: the same holdout labels fit the affine calibration map and estimate residual quantiles. The residuals therefore are not exchangeable with a new residual conditional on that data-dependent map. No finite-sample coverage guarantee is claimed. A deployment shift also invalidates exchangeability. \code{predict\_interval} is allowed only for this variant and checks \(0<\ell<1\); it does not check fitted state before calling \code{predict}.
+\begin{enumerate}
+\item Compute full-data scaler; randomly split rows; solve ridge on the training indices.
+\item Fit (\ref{eq:recal}) on holdout predictions if the coded size/variance conditions hold.
+\item Store sorted residuals after calibration on the same holdout. At inference, use (\ref{eq:interval-q}) for a requested level.
+\end{enumerate}
+
+\subsection{\code{stat\_regularised}: one-shot GCV selection}
+This mode computes a centered SVD of standardized full-data design and centered response: \(Z_c=Z-\bar Z=U\operatorname{diag}(s)V^\top\), \(y_c=y-\bar y\). For each \(\lambda\) in user \code{alpha\_grid} or default \code{numpy.logspace(-6,3,46)}, set \(h_j=s_j^2/(s_j^2+\lambda)\). The implementation evaluates
+\begin{align}
+\mathrm{RSS}(\lambda)&=\|y_c\|^2-\|U^\top y_c\|^2+\sum_j[(1-h_j)u_j^\top y_c]^2,\\
+\mathrm{df}(\lambda)&=1+\sum_jh_j,\\
+\mathrm{GCV}(\lambda)&=\frac{n\,\mathrm{RSS}(\lambda)}{\max(n-\mathrm{df}(\lambda),10^{-8})^2}.
+\label{eq:gcv}
+\end{align}
+The first residual term is response energy orthogonal to the thin-SVD column space; the extra one in degrees of freedom is the unpenalized intercept. The selected minimizing grid value is used in (\ref{eq:ridge-solve}) on all rows. This is the standard linear-smoother GCV idea \cite{golub1979}, specialized to the code's centered design and penalty convention. There is no fold CV. The singular values are computed once in \(O(\min(n,d)^2\max(n,d))\); scoring all \(G=46\) values is \(O(G\min(n,d))\). User-provided grid values are not checked for nonnegativity; the default is positive. For an empty grid, no best candidate is produced. GCV is an approximate prediction-risk criterion, not an unbiased external test estimate, and the shared scaler is computed before the centered SVD using all training rows.
+\begin{enumerate}
+\item Standardize features, center \(Z\) and \(y\), and compute a thin SVD once.
+\item For every grid \(\lambda\), evaluate (\ref{eq:gcv}) and choose the lowest score.
+\item Store \code{alpha\_} and \code{gcv\_}; solve (\ref{eq:ridge-solve}) on all observations.
+\end{enumerate}
+
+\subsection{\code{robust\_loss}: Huber-type IRLS}
+Starting from unit weights and fixed \(\lambda=\code{alpha}\), up to 30 iterations solve (\ref{eq:ridge-solve}), calculate residuals \(r_i=y_i-b-w^\top z_i\), and estimate robust scale
+\begin{equation}
+\begin{split}
+\hat\sigma&=1.4826\,\operatorname{median}_i|r_i-\operatorname{median}(r)|+10^{-12},\\
+c&=\code{huber\_k}\,\hat\sigma.
+\end{split}
+\end{equation}
+Weights update to
+\begin{equation}
+a_i^{new}=\begin{cases}1,&|r_i|\leq c,\\ c/\max(|r_i|,10^{-12}),&|r_i|>c.\end{cases}
+\label{eq:ridge-weights}
+\end{equation}
+The default \code{huber\_k}=1.345, \code{alpha}=1. Convergence is declared when \(\max_i|a_i^{new}-a_i|<10^{-6}\); otherwise the loop ends after 30 solves. Coefficients from the solve before the final weight update are stored, and \code{sample\_weights\_} holds the newly updated weights, so stored weights need not be the exact weights used in the final solve. For fixed scale, Huber IRLS weights correspond to a bounded-influence score \cite{huber1981}, but the implementation re-estimates MAD each iteration and uses a finite stopping rule; it does not verify objective decrease or convergence to a global optimum. The code checks nonnegative \code{alpha} but does not validate \code{huber\_k}; a negative value could produce invalid negative weights. Each step costs the dense weighted solve \(O(nd^2+d^3)\), at most 30 times.
+\begin{enumerate}
+\item Initialize \(a_i=1\); solve the weighted ridge system.
+\item Compute centered-MAD scale and update weights by (\ref{eq:ridge-weights}).
+\item Stop when the max weight change is below \(10^{-6}\), or after 30 rounds; store the coefficients from the last solve.
+\end{enumerate}
+
+\section{Methods side-by-side}
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{StatCore linear-model variants and defaults exactly as implemented.}
+\label{tab:linear-variants}
+\begin{tabular}{p{0.13\textwidth}p{0.29\textwidth}p{0.22\textwidth}p{0.21\textwidth}}
+\toprule
+Model/mode & Fitting rule & Default controls & Main limitation \\
+\midrule
+Logistic \code{base} & Mean multinomial NLL plus \(\alpha\|W\|_F^2/2\), L-BFGS-B & \(\alpha=.01\), max 300 & No calibration or robust weighting \\
+Logistic risk-calibrated & Fit on stratified subset, then golden-section temperature NLL & holdout .25, \(u\in[-3,3]\), 60 steps & Holdout not used to refit; calibration may worsen \\
+Logistic stat-regularised & Stratified CV mean log-loss grid selection, final refit & grid \(10^{-4}\ldots10\), \(K=5\); fold max 100 & Scaler fitted before folds; selected CV score optimistic \\
+Logistic robust-loss & Six rounds of NLL/MAD sample reweighting & \(1.4826\) MAD, cutoff factor 1.345, 6 rounds & Heuristic finite loop, no robust-loss convergence proof \\
+Ridge \code{base} & Normal equations with \(\alpha P+10^{-10}I\) & \(\alpha=1\) & Dense Gram solve; tiny intercept penalty \\
+Ridge risk-calibrated & Holdout linear recalibration plus same-holdout residual radius & holdout .25; interval level input & Reused holdout invalidates standard split-conformal guarantee \\
+Ridge stat-regularised & Thin-SVD GCV grid selection and full fit & 46 values \(10^{-6}\ldots10^3\) & Approximate in-sample criterion; user grid unchecked \\
+Ridge robust-loss & MAD-scaled Huber IRLS weighted normal equations & \(\alpha=1\), \(k=1.345\), 30 steps & Finite iterative reweighting, scale/data dependent \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Experimental protocol}
+The reproducible entry point is \code{docs/latex/experiments/linear\_experiment.py}; run it from any working directory with the repository's \code{.venv\\Scripts\\python.exe}. It evaluates all four StatCore variants and the standard references using five fixed seeds (11, 23, 37, 51, 79). Scikit-learn is used only for standard reference estimators (scaled logistic regression and scaled Ridge) and its bundled Breast Cancer and diabetes data \cite{pedregosa2011}. The logistic reference uses \(C=1/(n_{train}\times0.01)\), matching the order of the StatCore mean-loss penalty under the usual sum-loss sklearn parameterization; this does not make optimizer conventions identical. Ridge reference uses \(\alpha=1\). Baseline scalers are fitted within their training pipelines.
+
+Classification synthetic experiments use a 12-feature logistic data generator (360 train/600 test); high-dimensional uses 80 features, 10 informative (140/300). Conditions are clean, target-feature mean shift (test only), 15\% training label flips, and 8\% training feature outliers drawn from \(N(0,6^2I)\). The bundled Breast Cancer Wisconsin Diagnostic dataset is randomly split 75/25 for each seed. Regression uses a 12-feature linear model (360/600) with standard-normal features and unit test noise; the high-dimensional version uses 80 features and 100/300 rows; shifted test features have nonzero means; noisy training response noise has standard deviation 3; response-outlier condition adds noise of SD 20 to 8\% of training responses. The bundled diabetes dataset is randomly split 75/25. Synthetic generation and split logic are in the script.
+
+Held-out classification metrics are accuracy, natural log-loss and 10-bin equal-width confidence ECE, \(\sum_b(n_b/n)|\mathrm{acc}_b-\mathrm{conf}_b|\), based on maximum class probability; ECE is descriptive and can depend on binning. Ridge reports MSE, MAE and \(R^2=1-\mathrm{SSE}/\sum_i(y_i-\bar y)^2\). Tables give means \(\pm\) sample standard deviations across five independent seeds. These are single held-out comparisons per seed, not nested CV or formal hypothesis tests. The bundled dataset splits are not an external validation of deployment performance.
+
+\section{Classification results}
+Table~\ref{tab:logit-a} presents four synthetic scenarios and Table~\ref{tab:logit-b} includes high-dimensional data and Breast Cancer. Entries are measured run values, rounded to four decimal places.
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\caption{Logistic classification results: clean, shifted, label-noisy, and outlier synthetic cases; mean $\pm$ sample SD (five seeds).}
+\label{tab:logit-a}
+\begin{tabular}{llccc}
+\toprule
+Case & Estimator & Accuracy & Log-loss & ECE \\
+\midrule
+clean & sklearn standard & .7623 $\pm$ .0147 & .4867 $\pm$ .0166 & .0306 $\pm$ .0136 \\
+ & base & .7617 $\pm$ .0137 & .4864 $\pm$ .0195 & .0326 $\pm$ .0100 \\
+ & risk-calibrated & .7610 $\pm$ .0104 & .4900 $\pm$ .0168 & .0316 $\pm$ .0047 \\
+ & stat-regularised & .7617 $\pm$ .0137 & .4864 $\pm$ .0195 & .0326 $\pm$ .0100 \\
+ & robust-loss & .7600 $\pm$ .0169 & .5654 $\pm$ .0615 & .1029 $\pm$ .0245 \\
+\midrule
+shifted & sklearn standard & .7593 $\pm$ .0196 & .4919 $\pm$ .0214 & .0362 $\pm$ .0108 \\
+ & base & .7600 $\pm$ .0199 & .4921 $\pm$ .0251 & .0397 $\pm$ .0163 \\
+ & risk-calibrated & .7557 $\pm$ .0147 & .4940 $\pm$ .0233 & .0368 $\pm$ .0068 \\
+ & stat-regularised & .7600 $\pm$ .0199 & .4921 $\pm$ .0251 & .0397 $\pm$ .0163 \\
+ & robust-loss & .7573 $\pm$ .0123 & .5758 $\pm$ .0686 & .1015 $\pm$ .0254 \\
+\midrule
+label-noise & sklearn standard & .7363 $\pm$ .0071 & .5386 $\pm$ .0060 & .0656 $\pm$ .0156 \\
+ & base & .7383 $\pm$ .0066 & .5364 $\pm$ .0064 & .0630 $\pm$ .0152 \\
+ & risk-calibrated & .7233 $\pm$ .0134 & .5817 $\pm$ .0276 & .1094 $\pm$ .0281 \\
+ & stat-regularised & .7330 $\pm$ .0095 & .5548 $\pm$ .0043 & .0890 $\pm$ .0139 \\
+ & robust-loss & .7450 $\pm$ .0044 & .5199 $\pm$ .0186 & .0450 $\pm$ .0177 \\
+\midrule
+outliers & sklearn standard & .7150 $\pm$ .0287 & .5771 $\pm$ .0215 & .0801 $\pm$ .0371 \\
+ & base & .7163 $\pm$ .0277 & .5724 $\pm$ .0218 & .0722 $\pm$ .0352 \\
+ & risk-calibrated & .7057 $\pm$ .0330 & .6237 $\pm$ .0483 & .1205 $\pm$ .0754 \\
+ & stat-regularised & .6703 $\pm$ .0709 & .6261 $\pm$ .0441 & .0971 $\pm$ .0551 \\
+ & robust-loss & .7453 $\pm$ .0172 & .5124 $\pm$ .0186 & .0383 $\pm$ .0104 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\caption{Logistic classification results: high-dimensional and bundled Breast Cancer cases; mean $\pm$ sample SD (five seeds).}
+\label{tab:logit-b}
+\begin{tabular}{llccc}
+\toprule
+Case & Estimator & Accuracy & Log-loss & ECE \\
+\midrule
+high-dimensional & sklearn standard & .6340 $\pm$ .0286 & 1.0248 $\pm$ .0641 & .2353 $\pm$ .0179 \\
+ & base & .6327 $\pm$ .0362 & 1.2924 $\pm$ .1107 & .2648 $\pm$ .0292 \\
+ & risk-calibrated & .6293 $\pm$ .0155 & .6833 $\pm$ .0601 & .0779 $\pm$ .0580 \\
+ & stat-regularised & .6627 $\pm$ .0114 & .6520 $\pm$ .0368 & .0889 $\pm$ .0377 \\
+ & robust-loss & .6433 $\pm$ .0127 & 1.0957 $\pm$ .1103 & .2335 $\pm$ .0203 \\
+\midrule
+Breast Cancer & sklearn standard & .9704 $\pm$ .0116 & .1111 $\pm$ .0186 & .0371 $\pm$ .0085 \\
+ & base & .9704 $\pm$ .0092 & .1076 $\pm$ .0189 & .0333 $\pm$ .0146 \\
+ & risk-calibrated & .9606 $\pm$ .0170 & .2708 $\pm$ .2535 & .0271 $\pm$ .0124 \\
+ & stat-regularised & .9704 $\pm$ .0092 & .1076 $\pm$ .0189 & .0333 $\pm$ .0146 \\
+ & robust-loss & .9352 $\pm$ .0168 & .1858 $\pm$ .0514 & .0392 $\pm$ .0184 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Regression results}
+Table~\ref{tab:ridge-a} summarizes controlled data and Table~\ref{tab:ridge-b} covers the high-dimensional and bundled diabetes data. MSE and MAE are smaller-is-better, while \(R^2\) is larger-is-better.
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\caption{Ridge regression results: clean, shifted, noisy-response, and outlier cases; mean $\pm$ sample SD (five seeds).}
+\label{tab:ridge-a}
+\begin{tabular}{llccc}
+\toprule
+Case & Estimator & MSE & MAE & $R^2$ \\
+\midrule
+clean & sklearn standard & 1.0133 $\pm$ .0647 & .8074 $\pm$ .0274 & .8426 $\pm$ .0066 \\
+ & base & 1.0133 $\pm$ .0647 & .8074 $\pm$ .0274 & .8426 $\pm$ .0066 \\
+ & risk-calibrated & 1.0369 $\pm$ .0543 & .8144 $\pm$ .0220 & .8389 $\pm$ .0045 \\
+ & stat-regularised & 1.0134 $\pm$ .0653 & .8074 $\pm$ .0275 & .8426 $\pm$ .0067 \\
+ & robust-loss & 1.0130 $\pm$ .0677 & .8076 $\pm$ .0281 & .8426 $\pm$ .0073 \\
+\midrule
+shifted & sklearn standard & 1.0319 $\pm$ .0690 & .8155 $\pm$ .0285 & .8397 $\pm$ .0063 \\
+ & base & 1.0319 $\pm$ .0690 & .8155 $\pm$ .0285 & .8397 $\pm$ .0063 \\
+ & risk-calibrated & 1.0588 $\pm$ .0505 & .8250 $\pm$ .0191 & .8354 $\pm$ .0066 \\
+ & stat-regularised & 1.0314 $\pm$ .0703 & .8153 $\pm$ .0290 & .8398 $\pm$ .0065 \\
+ & robust-loss & 1.0303 $\pm$ .0721 & .8153 $\pm$ .0301 & .8400 $\pm$ .0077 \\
+\midrule
+noisy & sklearn standard & 1.2485 $\pm$ .1369 & .8964 $\pm$ .0469 & .8066 $\pm$ .0118 \\
+ & base & 1.2485 $\pm$ .1369 & .8964 $\pm$ .0469 & .8066 $\pm$ .0118 \\
+ & risk-calibrated & 1.6901 $\pm$ .1889 & 1.0449 $\pm$ .0662 & .7354 $\pm$ .0452 \\
+ & stat-regularised & 1.2331 $\pm$ .1515 & .8920 $\pm$ .0544 & .8090 $\pm$ .0154 \\
+ & robust-loss & 1.2634 $\pm$ .1620 & .9010 $\pm$ .0564 & .8045 $\pm$ .0135 \\
+\midrule
+outliers & sklearn standard & 1.8954 $\pm$ .3196 & 1.0942 $\pm$ .0768 & .7072 $\pm$ .0309 \\
+ & base & 1.8954 $\pm$ .3196 & 1.0942 $\pm$ .0768 & .7072 $\pm$ .0309 \\
+ & risk-calibrated & 2.1169 $\pm$ .2973 & 1.1656 $\pm$ .0819 & .6716 $\pm$ .0396 \\
+ & stat-regularised & 1.8301 $\pm$ .1883 & 1.0804 $\pm$ .0582 & .7155 $\pm$ .0296 \\
+ & robust-loss & 1.0236 $\pm$ .0771 & .8110 $\pm$ .0311 & .8410 $\pm$ .0089 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{2.6pt}
+\caption{Ridge regression results: high-dimensional and bundled diabetes cases; mean $\pm$ sample SD (five seeds).}
+\label{tab:ridge-b}
+\begin{tabular}{llccc}
+\toprule
+Case & Estimator & MSE & MAE & $R^2$ \\
+\midrule
+high-dimensional & sklearn standard & 4.2702 $\pm$ 1.6136 & 1.6378 $\pm$ .3083 & .4148 $\pm$ .1822 \\
+ & base & 4.2702 $\pm$ 1.6136 & 1.6378 $\pm$ .3083 & .4148 $\pm$ .1822 \\
+ & risk-calibrated & 5.1271 $\pm$ 2.1774 & 1.7654 $\pm$ .3284 & .3007 $\pm$ .2436 \\
+ & stat-regularised & 2.5458 $\pm$ .2799 & 1.2668 $\pm$ .0618 & .6469 $\pm$ .0237 \\
+ & robust-loss & 3.7527 $\pm$ .8932 & 1.5349 $\pm$ .1935 & .4821 $\pm$ .0953 \\
+\midrule
+Diabetes & sklearn standard & 3128.8100 $\pm$ 410.4238 & 45.4471 $\pm$ 3.1316 & .4868 $\pm$ .0630 \\
+ & base & 3128.8100 $\pm$ 410.4238 & 45.4471 $\pm$ 3.1316 & .4868 $\pm$ .0630 \\
+ & risk-calibrated & 3242.3199 $\pm$ 439.0180 & 46.7776 $\pm$ 3.1828 & .4683 $\pm$ .0671 \\
+ & stat-regularised & 3136.7135 $\pm$ 413.4326 & 45.4778 $\pm$ 3.1319 & .4855 $\pm$ .0636 \\
+ & robust-loss & 3137.4466 $\pm$ 397.4468 & 45.4578 $\pm$ 2.8843 & .4854 $\pm$ .0605 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Interpretation and limitations}
+For logistic regression, finite reweighting improves both accuracy and probability losses under synthetic label noise (accuracy .7450, NLL .5199, ECE .0450 versus base .7383/.5364/.0630) and feature outliers (.7453/.5124/.0383 versus .7163/.5724/.0722). In clean data, it has worse log-loss (.5654 versus .4864) and ECE (.1029 versus .0326), exposing its sensitivity to pointwise classification difficulty rather than a universal robustness advantage. The internal-temperature option lowers ECE in several cases but can seriously worsen log-loss on Breast Cancer (.2708 versus .1076); accuracy is largely unchanged by positive temperature. GCV-selected logistic regularization helps in the high-dimensional synthetic case but is weaker than base on the outlier case. A common standardizing step is calculated once, not nested within each CV fold.
+
+For ridge, the robust IRLS variant reduces outlier-case MSE from 1.8954 to 1.0236 and raises \(R^2\) from .7072 to .8410, whereas in clean/noisy response cases it is nearly tied or slightly worse. The ridge GCV variant is beneficial for the deliberately underdetermined high-dimensional experiment (MSE 2.5458 versus 4.2702; \(R^2=.6469\) versus .4148), but not on the small bundled Diabetes split (MSE 3136.7 versus 3128.8). Split recalibration does not improve regression error in these experiments; same-holdout residual reuse means its reported interval should not be treated as having guaranteed conformal coverage. These results are descriptive, not evidence of statistical significance.
+
+The standard sklearn reference is not identical in every solver detail. Scaling is comparable; the logistic regularization parameter is mapped to match the mean-loss scale approximately, while solver defaults and stopping criteria differ. No hyperparameter or ECE-bin selection was based on held-out test labels. Accuracy and ECE can both obscure class-specific errors; future evaluation should report subgroup and operating-point metrics, paired tests across independent datasets, and outer validation when selecting variants.
+
+\section{Conclusion}
+The source has four variants per class, but not all names imply theoretical guarantees. The logistic risk option is a scalar post-hoc temperature fit; its statistical regularizer is fold-wise log-loss selection; its robust option is six adaptive reweighting rounds. Ridge's ``risk'' mode combines an affine calibration fit and an interval based on reused residuals, its ``statistical'' mode is a precise grid GCV calculation, and its robust mode is finite MAD-scaled IRLS. The equations and caveats here make those semantics explicit. The observed wins are tied to their corresponding assumptions and data designs; standard linear estimators remain competitive, and no reliability property follows from a variant label alone.
+
+\begin{thebibliography}{9}
+\bibitem{mccullagh1989} P. McCullagh and J. A. Nelder, \emph{Generalized Linear Models}, 2nd ed. London, U.K.: Chapman \& Hall, 1989.
+\bibitem{hoerl1970} A. E. Hoerl and R. W. Kennard, ``Ridge regression: Biased estimation for nonorthogonal problems,'' \emph{Technometrics}, vol. 12, no. 1, pp. 55--67, 1970.
+\bibitem{golub1979} G. H. Golub, M. Heath, and G. Wahba, ``Generalized cross-validation as a method for choosing a good ridge parameter,'' \emph{Technometrics}, vol. 21, no. 2, pp. 215--223, 1979.
+\bibitem{huber1981} P. J. Huber, \emph{Robust Statistics}. New York, NY, USA: Wiley, 1981.
+\bibitem{vovk2005} V. Vovk, A. Gammerman, and G. Shafer, \emph{Algorithmic Learning in a Random World}. New York, NY, USA: Springer, 2005.
+\bibitem{pedregosa2011} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+\end{document}

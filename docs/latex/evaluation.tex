@@ -1,0 +1,87 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Classification and Statistical Evaluation with ReliableML: Metrics, Tests, and an Empirical Brier Decomposition}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Reliable classification evaluation requires more than a single accuracy statistic. This paper documents the labeled evaluation methods implemented in ReliableML: confusion-matrix metrics including multiclass Matthews correlation coefficient (MCC), feature--target and train--test ANOVA/MANOVA/chi-square comparisons, and an empirical repeated-stratified-cross-validation Brier decomposition. We give estimands, equations, interpretation, and assumptions, including the conditions under which MANOVA is unavailable. These outputs describe finite samples and cannot replace an independent evaluation design, calibration protocol, or correction for multiplicity. The Brier decomposition is explicitly an empirical one-hot prediction-error decomposition, not a population estimate of irreducible noise.
+\end{abstract}
+
+\begin{IEEEkeywords}
+classification, model evaluation, MCC, ANOVA, MANOVA, Brier score, cross-validation
+\end{IEEEkeywords}
+
+\section{Introduction}
+Metric selection affects how classifier quality is communicated. Accuracy can obscure poor minority-class performance, while tests of feature distributions do not establish predictive utility. ReliableML keeps classification outcomes, distribution comparisons, statistical association tests, and cross-validated probability error conceptually separate. This manuscript describes the implemented computations and does not claim that their inclusion improves model performance.
+
+\section{Confusion-matrix estimands}
+For \(C\) classes, let \(M_{ij}\) count observations with true class \(i\) and predicted class \(j\), \(t_i=\sum_j M_{ij}\), \(p_i=\sum_j M_{ji}\), \(c=\sum_i M_{ii}\), and \(s=\sum_{ij}M_{ij}\). Accuracy is \(c/s\). For each class \(i\), one-vs-rest precision, recall, specificity, and F1 are computed from \(TP_i=M_{ii}\), \(FN_i=t_i-TP_i\), \(FP_i=p_i-TP_i\), and \(TN_i=s-TP_i-FN_i-FP_i\):
+\[
+\begin{aligned}
+\operatorname{Prec}_i&=\frac{TP_i}{TP_i+FP_i},\\
+\operatorname{Rec}_i&=\frac{TP_i}{TP_i+FN_i},\\
+\operatorname{Spec}_i&=\frac{TN_i}{TN_i+FP_i}.
+\end{aligned}
+\]
+\[
+F1_i=\frac{2\operatorname{Prec}_i\operatorname{Rec}_i}
+{\operatorname{Prec}_i+\operatorname{Rec}_i}.
+\]
+Zero denominators are handled by the implementation's ratio convention. Macro averages weight each observed class equally; support-weighted averages weight by true class count. Balanced accuracy is the macro-average recall.
+
+Define \(A=s^2-\sum_i p_i^2\) and \(B=s^2-\sum_i t_i^2\). The multiclass MCC implemented by ReliableML \cite{software} is
+\[
+\operatorname{MCC}=\frac{cs-\sum_i t_ip_i}{\sqrt{AB}}.
+\]
+It is a correlation-like summary that incorporates all cells and is useful when class supports differ \cite{gorodkin2004,matthews1975}. When the denominator is zero, the implementation returns zero. MCC remains only one summary; the confusion matrix, classwise rates, and supports should be reported alongside it.
+
+\section{Statistical comparisons}
+\subsection{Numeric feature--target and cohort tests}
+For numeric feature values \(x_{ig}\) in \(G\) groups, one-way ANOVA tests equality of group means \cite{fisher1925}. Its statistic is \(F=MS_B/MS_W\), where \(SS_B=\sum_g n_g(\bar x_g-\bar x)^2\), \(SS_W=\sum_g\sum_i(x_{ig}-\bar x_g)^2\), and mean squares divide by \(G-1\) and \(N-G\), respectively. ReliableML reports the F statistic, p-value, degrees of freedom, group sizes, and exclusions. Independence, approximate within-group normality, and equal variances are not automatically verified.
+
+For multiple numeric outcomes, MANOVA tests whether group mean vectors differ jointly. The implementation uses a statsmodels multivariate linear model and returns an unavailable status if the sample is insufficient or residual covariance is rank-deficient/singular. Complete rows are required for the joint outcome vector. A singular result is not silently converted into evidence of no difference.
+
+\subsection{Categorical association}
+For a contingency table with observed counts \(O_{ab}\), expected counts \(E_{ab}\), the Pearson statistic is
+\[
+\chi^2=\sum_{a,b}\frac{(O_{ab}-E_{ab})^2}{E_{ab}},
+\qquad \mathrm{df}=(A-1)(B-1).
+\]
+It is used for categorical feature--target association and train--test cohort comparison. The report includes expected counts and warns when cells have expected count below five. Row independence and adequate expected frequencies are required for the usual asymptotic reference distribution.
+
+These tests address whether observed means, multivariate means, or category frequencies differ; they do not quantify predictive importance or causal effects. Many features imply multiple tests, so false-discovery control and prespecified hypotheses should be considered by downstream researchers.
+
+\section{Empirical repeated-CV Brier decomposition}
+For row \(i\), let \(e_{y_i}\) be its one-hot target vector, and let \(p_i^{(r)}\) be its out-of-fold probability vector on repeat \(r\). The repeated-CV mean prediction \(\bar p_i=R^{-1}\sum_r p_i^{(r)}\) gives empirical components
+\[
+\widehat B=\frac1n\sum_i\|\bar p_i-e_{y_i}\|_2^2,\quad
+\widehat V=\frac1n\sum_i\frac1R\sum_r\|p_i^{(r)}-\bar p_i\|_2^2,
+\]
+\[
+\widehat E=\frac1n\sum_i\frac1R\sum_r\|p_i^{(r)}-e_{y_i}\|_2^2.
+\]
+The implementation reports these empirical quantities from repeated stratified cross-validation. Probability outputs are used when available; otherwise hard predictions are one-hot encoded. The fold count is bounded by the smallest observed class size. This finite-sample decomposition depends on the selected folds, repeats, estimator, and labels; it is not an estimate of population irreducible noise and does not remove selection bias if model choices were made using the same data.
+
+\section{Evaluation design and interpretation}
+The test data must be separated from all fitting, preprocessing, feature selection, resampling, threshold setting, and hyperparameter selection. Choose a split design aligned with deployment (random, grouped, spatial, temporal, or external-site). For selected-model claims, use nested or untouched outer validation. Report label prevalence, per-class support, confusion counts, calibration, uncertainty, and the chosen primary metric. Statistical p-values are not effect sizes and should be interpreted with sample size and multiplicity in view.
+
+\section{Conclusion}
+ReliableML combines classwise metrics, MCC, statistical cohort tests, and repeated-CV Brier summaries. Each quantity answers a different question and inherits its own sampling assumptions. The package provides diagnostics; valid generalization claims still depend on a prospectively chosen evaluation design and independent data.
+
+\begin{thebibliography}{9}
+\bibitem{gorodkin2004} J. Gorodkin, ``Comparing two K-category assignments by a K-category correlation coefficient,'' \emph{Computational Biology and Chemistry}, vol. 28, no. 5--6, pp. 367--374, 2004.
+\bibitem{matthews1975} B. W. Matthews, ``Comparison of the predicted and observed secondary structure of T4 phage lysozyme,'' \emph{Biochimica et Biophysica Acta}, vol. 405, no. 2, pp. 442--451, 1975.
+\bibitem{fisher1925} R. A. Fisher, \emph{Statistical Methods for Research Workers}. Edinburgh: Oliver and Boyd, 1925.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

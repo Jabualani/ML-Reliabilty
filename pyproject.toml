@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ReliableML"
+version = "1.0.0"
+description = "Tools for assessing machine-learning reliability alongside predictions."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Jabulani Monchwe", email = "MonchweJ.25@gmail.com" },
+    { name = "Olorato Motitswane", email = "oloratomotitswane@gmail.com" },
+    { name = "Mfundo Monchwe", email = "diditmfundo@gmail.com" },
+]
+maintainers = [{ name = "Jabulani Monchwe", email = "MonchweJ.25@gmail.com" }]
+dependencies = [
+    "numpy>=1.23",
+    "pandas>=1.5",
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+    "seaborn>=0.13",
+    "statsmodels>=0.14",
+]
+
+[project.optional-dependencies]
+joblib = ["joblib>=1.2"]
+torch = ["torch>=2.0"]
+
+[project.urls]
+Homepage = "https://github.com/Jabualani/ML-Reliabilty"
+Repository = "https://github.com/Jabualani/ML-Reliabilty"
+"Google Scholar" = "https://scholar.google.com/citations?user=DqA_HV4AAAAJ&hl=en"
+LinkedIn = "https://www.linkedin.com/in/jabulani-monchwe-7a145117a/"
+"Stats, Math & ML Research Group" = "https://chat.whatsapp.com/KLB5zk5w7xVIJHaM65KxPa"
+"IDEA-Research Club WhatsApp Group" = "https://chat.whatsapp.com/FOIpSTDLH0X6E6CIL6IZfn"
+
+[tool.setuptools.packages.find]
+where = ["src"]

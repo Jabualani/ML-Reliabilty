@@ -1,0 +1,276 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{array}
+\title{Reliability-Oriented Linear Discriminant Analysis in StatCore: Exact Algorithms, Derivations, and Benchmarks}
+\author{\jabulaniauthor\and\martinchanzauthor\and\oloratoauthor\and\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+This paper specifies the pure-NumPy StatCore linear discriminant classifier as implemented, including its five selectable variants: pooled-covariance LDA, domain-weighted covariate-shift correction, spherical covariance shrinkage, thresholded diagonal discriminant analysis, and a class-heteroscedastic quadratic score. We derive each estimating equation and distinguish code-level choices from textbook variants. The treatment covers numerical regularization, discriminant projection, probability conversion, convergence scope, computational cost, failure modes, and hyperparameters. A five-seed evaluation compares every implementation against scikit-learn's standard LDA on controlled distribution changes and the bundled Wine dataset. The results show clear gains for shrinkage or thresholding in the deliberately high-dimensional case and for the heteroscedastic score under simulated class-dependent variances, but also material regressions: target weighting degrades the shifted experiment, and shrinkage harms Wine accuracy. These finite experiments establish neither general superiority nor calibrated uncertainty guarantees.
+\end{abstract}
+\begin{IEEEkeywords}
+linear discriminant analysis, covariate shift, covariance shrinkage, sparse discriminant analysis, quadratic discriminant analysis, reliability
+\end{IEEEkeywords}
+
+\section{Introduction}
+Fisher's linear discriminant analysis (LDA) uses class-conditional Gaussian models with a shared covariance matrix; the resulting log-posterior scores are affine in the input \cite{fisher1936,anderson1958}. Its appealing low-dimensional form can fail when the empirical covariance is ill-conditioned, when class distributions differ in covariance, or when the training covariate distribution differs from deployment. Regularized discriminant analysis is one established covariance-regularization family, though the shrinkage target here is a scaled identity rather than a pooled/group interpolation \cite{friedman1989}. ReliableML's StatCore implementation provides a pure-NumPy reference model plus four alternatives. We describe the exact \code{src/ml\_reliability/statcore/lda/lda.py} behavior. The variants are proposed library options, not novel algorithms in the literature, and are not guaranteed improvements.
+
+\section{Notation and common implementation}
+Let \(X\in\mathbb R^{n\times d}\) be finite numeric data and \(y_i\in\{c_1,\ldots,c_C\}\), where the classes are the sorted values returned by \code{numpy.unique}. Each observed class has at least one row and \(C\geq2\). Denote class index \(g_i\in\{1,\ldots,C\}\). The shared validator requires a two-dimensional nonempty feature array, matching one-dimensional labels, finite numeric feature entries, and at least two training rows. The default hyperparameters are \(\code{n\_components=None}\), \(\code{shrinkage=None}\), \(\code{reg}=10^{-6}\), \(\code{threshold}=1\), \(\code{reg\_param}=0.3\), and \(\code{random\_state}=0\). The last argument is stored but not used by this deterministic LDA fit.
+
+With unit or importance weights \(w_i>0\), define the class weight \(W_k=\sum_{i:g_i=k}w_i\), class prior \(\hat\pi_k=W_k/\sum_iw_i\), and class mean
+\begin{equation}
+\hat\mu_k=\frac{1}{W_k}\sum_{i:g_i=k}w_i x_i.
+\end{equation}
+The implementation's pooled scatter is a maximum-likelihood-style covariance (no \(n-C\) degrees-of-freedom correction):
+\begin{equation}
+S=\frac{1}{\sum_i w_i}\sum_i w_i(x_i-\hat\mu_{g_i})(x_i-\hat\mu_{g_i})^\top.
+\label{eq:pooled}
+\end{equation}
+Unless a variant replaces it, the covariance used by scoring is
+\begin{equation}
+\tilde S=S+\rho I_d,\qquad \rho=\code{reg}\,\max\{\operatorname{tr}(S)/d,10^{-12}\}.
+\label{eq:jitter}
+\end{equation}
+This is scale-relative ridge stabilization, not a positive-definiteness guarantee for arbitrary negative \code{reg}. The code does not validate \code{reg}. For common-covariance scores, \(\tilde S=Q\Lambda Q^\top\) is eigendecomposed, eigenvalues are floored at \(10^{-12}\), and the precision is formed as \(\tilde S^{-1}=Q\operatorname{diag}(1/\max(\lambda_j,10^{-12}))Q^\top\). In code, the stored \code{\_whiten} equals \(Q\operatorname{diag}(1/\sqrt{\max(\lambda_j,10^{-12})})\), and \code{\_prec} equals \(\code{\_whiten}\code{\_whiten}^{\top}\).
+
+For the common-covariance variants, the class score is
+\begin{equation}
+\delta_k(x)=x^\top\tilde S^{-1}\hat\mu_k-\tfrac12\hat\mu_k^\top\tilde S^{-1}\hat\mu_k+\log\max(\hat\pi_k,10^{-300}).
+\label{eq:lda-score}
+\end{equation}
+The term \(-x^\top\tilde S^{-1}x/2\) of the Gaussian log density is common to all classes and is therefore omitted without changing the argmax or softmax. Probabilities are computed by row-wise stable softmax, subtracting each row maximum before exponentiation. Predictions are the class at the largest raw score, equivalent to the largest softmax probability.
+
+The projection uses the prior-weighted mean offsets around \(\bar\mu=\sum_k\hat\pi_k\hat\mu_k\). Specifically, \(M=\operatorname{diag}(\sqrt{\hat\pi})(\hat\mu-\bar\mu)\code{\_whiten}\); if \(M=U\Sigma V^\top\), the first \(r=\min(C-1,d)\) right singular vectors yield \(\code{scalings\_}=\code{\_whiten}V_{1:r}^\top\) in the implementation's column-oriented representation. The output transform is \((X-\bar\mu)\code{scalings\_}\), with at most \(C-1\) coordinates. This transform is retained even for the heteroscedastic classifier and does not alter its QDA-like prediction score. An explicitly requested \code{n\_components} must be an integer in \([1,r]\).
+
+\section{Reference method: pooled LDA}
+The Gaussian model assumes \(X\mid Y=k\sim\mathcal N(\mu_k,\Sigma)\) and prior \(\pi_k\). Its log posterior, up to a class-independent term, is
+\begin{equation}
+\log p(k\mid x)=x^\top\Sigma^{-1}\mu_k-\tfrac12\mu_k^\top\Sigma^{-1}\mu_k+\log\pi_k+\mathrm{const}(x).
+\end{equation}
+The standard plug-in estimates are the observed class frequencies, class means, and pooled within-class covariance. StatCore's \code{base} computes exactly these empirical estimates with denominator \(n\), then adds (\ref{eq:jitter}). In the unweighted case \(W_k=n_k\), \(\hat\pi_k=n_k/n\), and \(\hat\mu_k=n_k^{-1}\sum_{g_i=k}x_i\). No covariance shrinkage or robust reweighting is applied. This is the reference implementation; the tiny relative ridge term makes it numerically regularized rather than algebraically identical to unregularized textbook LDA.
+
+\subsection{Algorithm and derivation}
+The covariance maximum-likelihood estimate follows by minimizing \(\sum_i(x_i-\mu_{g_i})^\top\Sigma^{-1}(x_i-\mu_{g_i})+n\log|\Sigma|\). Differentiating with respect to each \(\mu_k\) gives \(n_k\hat\mu_k=\sum_{g_i=k}x_i\); differentiating with respect to \(\Sigma^{-1}\), or substituting the mean estimates in the Gaussian likelihood, gives \(S=n^{-1}\sum_i(x_i-\hat\mu_{g_i})(x_i-\hat\mu_{g_i})^\top\). The prior MLE under a categorical sampling model is \(n_k/n\). Completing the Gaussian log density yields (\ref{eq:lda-score}); thus argmax classification is linear in \(x\).
+\begin{enumerate}
+\item Validate \(X,y\), enumerate classes, and set all observation weights to one.
+\item Compute class counts, priors, means, and pooled covariance (\ref{eq:pooled}); add (\ref{eq:jitter}).
+\item Eigendecompose, floor eigenvalues, and form the precision and whitening matrix.
+\item Form the prior-weighted between-class matrix; compute its thin SVD and retain at most \(C-1\) directions.
+\item On prediction, evaluate (\ref{eq:lda-score}); apply argmax or softmax.
+\end{enumerate}
+
+\subsection{Assumptions, edge cases, and cost}
+The statistical interpretation assumes independent observations, class-conditional Gaussianity, and a shared covariance; the algebra still returns scores when these assumptions fail. It cannot estimate a covariance without at least two rows, and requires two observed classes. Singular or nearly singular scatter is regularized by (\ref{eq:jitter}) and an eigenvalue floor; very small regularization can still create extreme scores. A new input must have the original feature count and finite numeric values. For \(n\) rows, \(d\) features, and \(C\) classes, covariance construction costs \(O(nd^2)\), symmetric eigendecomposition \(O(d^3)\), and mean-matrix SVD up to \(O(Cd\min(C,d))\). Stored dense covariance/precision is \(O(d^2)\); scoring a batch of \(m\) rows costs \(O(md^2+mCd)\) using the stored precision.
+
+\section{Library variants and exact definitions}
+\subsection{\code{shift\_corrected}: domain-classifier importance weighting}
+This option requires \code{fit(X, y, X\_target=...)}. It estimates the density ratio \(p_t(x)/p_s(x)\) from source training covariates and unlabeled target covariates, then uses the source weights in class priors, means, and scatter. The target argument is rejected for all other variants. Let \(n_s=n\), \(n_t=|X_t|\), \(\mu_s\) and \(s_s\) be source-column means and standard deviations, with \(10^{-12}\) added to each standard deviation. Source and target covariates are standardized using these source statistics and concatenated; an intercept column is appended. A binary domain label \(t=0\) denotes source, \(t=1\) target. Logistic coefficients start at zero and are updated by Newton steps for at most 25 rounds:
+\begin{align}
+p_j&=\sigma(a_j^\top\beta),\quad g=A^\top(p-t)+R\beta,\\
+H&=A^\top\operatorname{diag}(p_j(1-p_j))A+R+10^{-8}I,\\
+\beta&\leftarrow\beta-H^{-1}g.
+\end{align}
+Here \(R=I\) except its intercept diagonal is zero, \(\sigma\) uses logits clipped to \([-30,30]\), and iteration stops early when the largest absolute step is below \(10^{-8}\). This is an unweighted domain log-likelihood with unit L2 coefficient penalty, not a tuned density-ratio estimator.
+
+Under domain-label sampling, Bayes' rule gives
+\begin{equation}
+\frac{p_t(x)}{p_s(x)}=\frac{P(t=1\mid x)}{P(t=0\mid x)}\frac{n_s}{n_t}.
+\end{equation}
+For source points, the fitted odds therefore give \(w_i=\hat p_i/(1-\hat p_i)\,(n_s/n_t)\). StatCore clips each weight above at 20, then rescales all weights to sum to \(n_s\). This last step preserves their average as one but changes the absolute scale from the unnormalized density ratio; the class priors still use the relative weighted masses. Weighted class means and covariance then follow (\ref{eq:pooled}). The derivation presumes covariate shift, \(p_s(y\mid x)=p_t(y\mid x)\), overlap, and a sufficiently specified domain model \cite{shimodaira2000}. Clipping controls explosive estimated ratios but introduces bias. Crucially, target covariates are used at fit, while target labels are not; there is no theorem that this fitted ratio improves under misspecified or finite-domain models.
+
+\begin{enumerate}
+\item Fit the regularized domain logistic model on source-versus-target covariates; obtain source posterior probabilities.
+\item Convert posterior odds to ratios with factor \(n_s/n_t\), clip at 20, and normalize weights to sum to \(n_s\).
+\item Compute weighted class masses, priors, means, and pooled scatter; use common LDA scoring and projection.
+\end{enumerate}
+Its dominant fit cost adds up to 25 dense Newton solves, each typically \(O((n_s+n_t)d^2+d^3)\); it has no stochastic convergence guarantee under finite termination. Input target data must be finite, two-dimensional, and have \(d\) columns. The learned weights are stored as \code{sample\_weights\_}. The implementation has no hyperparameters for clip, domain penalty, or iteration count: they are fixed at 20, 1, and 25.
+
+\subsection{\code{shrinkage}: pooled covariance shrinkage}
+This estimator replaces \(S\) before adding (\ref{eq:jitter}) by
+\begin{equation}
+S_\gamma=(1-\gamma)S+\gamma\frac{\operatorname{tr}(S)}{d}I_d,
+\quad 0\leq\gamma\leq1.
+\label{eq:shrink}
+\end{equation}
+When \code{shrinkage} is supplied, it is converted to float and validated in \([0,1]\). Otherwise \(\gamma\) is the code's analytic intensity. Write \(\mu=\operatorname{tr}(S)/d\), \(\Delta^2=\|S-\mu I\|_F^2/d\). If \(\Delta^2\leq10^{-18}\), use \(\gamma=1\). Otherwise, for centered within-class residual rows \(z_i=x_i-\hat\mu_{g_i}\) (unweighted in this variant), compute
+\begin{align}
+b^2&=\frac{1}{n^2d}\sum_{i=1}^n\left[(z_i^\top z_i)^2-2z_i^\top S z_i+\sum_{a,b}S_{ab}^2\right],\\
+\gamma&=\operatorname{clip}_{[0,1]}\left(\frac{\min(b^2,\Delta^2)}{\Delta^2}\right).
+\label{eq:lw-code}
+\end{align}
+Equations (\ref{eq:shrink})--(\ref{eq:lw-code}) are the actual implementation. They are a finite-sample shrinkage rule inspired by Ledoit--Wolf \cite{ledoitwolf2004}, and should not be equated with every convention in dedicated Ledoit--Wolf software (for example, centering, normalization, and finite-sample constraints vary). The formula follows the bias-variance intuition: shrink sample covariance eigenvalues toward their average to lower variance, paying bias when population eigenvalues are far from spherical. It leaves class means and empirical priors unchanged. When \(\gamma=1\), the pre-jitter covariance is isotropic; \(d=1\) has zero \(\Delta^2\) and selects full shrinkage. Estimate cost is \(O(nd^2+d^3)\) and prediction is the common LDA cost. The fixed shrinkage has no iterative convergence question; an estimated value is clipped to a compact interval.
+
+\begin{enumerate}
+\item Compute the unweighted class statistics and pooled \(S\).
+\item Use user \(\gamma\), or evaluate (\ref{eq:lw-code}) and clip it to \([0,1]\).
+\item Apply (\ref{eq:shrink}), add scaled ridge (\ref{eq:jitter}), then run the common eigendecomposition and scoring steps.
+\end{enumerate}
+
+\subsection{\code{sparse}: nearest-shrunken class means}
+This option uses the diagonal of the pooled covariance, but changes the means through a thresholded standardized contrast. Let \(v_j=S_{jj}\), \(s_j=\sqrt{v_j}\), \(s_0=\operatorname{median}_j(s_j)\), \(g=n^{-1}\sum_i x_i\) (the unweighted global mean), and
+\begin{equation}
+m_k=\sqrt{\max\{n_k^{-1}-n^{-1},10^{-12}\}},\quad
+D_{kj}=\frac{\hat\mu_{kj}-g_j}{m_k(s_j+s_0)}.
+\end{equation}
+The soft-threshold operator is \(\eta_\tau(u)=\operatorname{sign}(u)\max(|u|-\tau,0)\), with \(\tau=\code{threshold}\). Then
+\begin{equation}
+\begin{aligned}
+\hat\mu^{(sp)}_{kj}&=g_j+m_k(s_j+s_0)\eta_\tau(D_{kj}),\\
+\mathcal J&=\{j:\exists k,\eta_\tau(D_{kj})\ne0\}.
+\end{aligned}
+\end{equation}
+Features in \(\mathcal J\) are recorded as \code{selected\_features\_}; the implementation does not slice the input or the covariance. The score still uses all coordinates and a diagonal covariance \(\operatorname{diag}(v)\) plus (\ref{eq:jitter}). This is not a sparse coefficient vector fitted by an L1-penalized likelihood. The thresholded centroid is shrunk toward the overall mean, and setting a very large nonnegative threshold makes all means equal; classification then reduces to prior selection. No range validation is applied to \code{threshold}; a negative value increases contrasts rather than sparsifying.
+
+The operation is a deterministic plug-in rule, not an optimizer for the original Gaussian likelihood: the soft threshold is the proximal operator of an \(\ell_1\) penalty on each standardized class contrast. Since the code thresholds \(D\) directly, it does not solve a joint constrained discriminant problem. Fit requires \(O(nd^2+d^3+Cd)\), with covariance diagonal scoring reducing quadratic forms to \(O(mdC)\), although code stores a dense precision matrix. The same covariance regularization and edge conditions apply.
+\begin{enumerate}
+\item Calculate pooled diagonal variances, global mean, median standard deviation, and class-specific contrast scale \(m_k\).
+\item Soft-threshold each standardized mean contrast at \code{threshold}; reconstruct shrunk means and record columns with any surviving contrast.
+\item Replace \(S\) by \(\operatorname{diag}(S)\); add scaled ridge and use shared LDA score and projection.
+\end{enumerate}
+
+\subsection{\code{heteroscedastic}: regularized class-specific quadratic scores}
+The implementation retains the same class means and priors as base, but estimates a separate within-class covariance \(S_k\). It uses
+\begin{equation}
+\begin{aligned}
+S_k&=\frac{1}{W_k}\sum_{i:g_i=k}w_i(x_i-\hat\mu_k)(x_i-\hat\mu_k)^\top,\\
+\Sigma_k&=(1-r)S_k+r\tilde S+10^{-8}I_d,
+\end{aligned}
+\label{eq:qcov}
+\end{equation}
+where \(r=\code{reg\_param}\in[0,1]\), and \(\tilde S\) is the pooled covariance after its scaled \code{reg} term. \(r=0\) uses class scatter plus fixed jitter; \(r=1\) uses regularized common scatter plus fixed jitter. Cholesky factors \(L_kL_k^\top=\Sigma_k\) and log determinants \(2\sum_j\log (L_{k,jj})\) are cached. The score is
+\begin{equation}
+\begin{split}
+\delta_k^{(Q)}(x)&=-\tfrac12\left[(x-\hat\mu_k)^\top\Sigma_k^{-1}(x-\hat\mu_k)+\log|\Sigma_k|\right]\\
+&\quad+\log\max(\hat\pi_k,10^{-300}).
+\end{split}
+\label{eq:qscore}
+\end{equation}
+This is the Gaussian QDA discriminant with regularized class covariance \cite{anderson1958}; unlike textbook QDA, there is no shared-covariance determinant term because it is not applicable. At prediction, triangular solution \(z=L_k^{-1}(X-\hat\mu_k)^\top\) provides the quadratic form as columnwise \(\|z\|^2\). It is a QDA-style classifier, although the class mean is still whatever earlier preprocessing established (ordinary means here, since variants are mutually exclusive).
+
+The restriction \(r\in[0,1]\) is checked only when this branch is fitted. The added positive jitter makes \(\Sigma_k\) positive definite up to floating-point effects; a Cholesky failure is still possible for severe overflow/round-off. Each class covariance and Cholesky factor requires \(O(n_kd^2+d^3)\), totaling \(O(nd^2+Cd^3)\). Prediction costs \(O(mCd^2)\), and storage increases to \(O(Cd^2)\). Small class counts cause noisy covariance estimates; regularization borrows from pooled scatter but does not guarantee an advantage.
+\begin{enumerate}
+\item Compute shared empirical means, priors, and regularized pooled covariance.
+\item For each class, compute its scatter and form (\ref{eq:qcov}); validate \(r\), Cholesky-factorize and cache the log determinant.
+\item At prediction, evaluate (\ref{eq:qscore}) class by class and normalize by softmax if probabilities are requested.
+\end{enumerate}
+
+\section{Variant comparison and implementation limits}
+Table~\ref{tab:variants} consolidates the code-level estimator and controls. Unless otherwise indicated, all variants use empirical priors and the shared projection described above.
+\begin{table*}[t]
+\centering\scriptsize
+\caption{LDA modes and exact controls in the implementation.}
+\label{tab:variants}
+\begin{tabular}{p{0.19\textwidth}p{0.31\textwidth}p{0.22\textwidth}p{0.16\textwidth}}
+\toprule
+Mode & Estimator / scoring rule & Hyperparameters & Principal assumption / cost \\
+\midrule
+\code{base} & Pooled within-class MLE covariance plus scaled ridge; linear score (\ref{eq:lda-score}) & \code{reg}=1e-6; \code{n\_components}=None & Shared covariance; \(O(nd^2+d^3)\) fit \\
+\code{shift\_corrected} & Domain-logistic odds weights; weighted prior, means, and pooled scatter & target covariates required; clip 20, L2 1, 25 Newton steps fixed & Covariate shift/overlap; domain fit adds up to \(O((n+n_t)d^2+d^3)\) per step \\
+\code{shrinkage} & \((1-\gamma)S+\gamma\operatorname{tr}(S)I/d\) & \code{shrinkage}=None selects (\ref{eq:lw-code}); else \([0,1]\) & Near-spherical covariance; less sample variance \\
+\code{sparse} & Soft-threshold standardized centroid contrasts; diagonal pooled scatter & \code{threshold}=1.0; no range validation & Sparse class differences; dense common-score interface \\
+\code{heteroscedastic} & Class-specific regularized covariance and quadratic score & \code{reg\_param}=0.3, validated in \([0,1]\); pooled \code{reg}=1e-6 & Class Gaussian covariance differences; \(O(nd^2+Cd^3)\) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Empirical evaluation}
+\subsection{Protocol}
+The runnable script is \path{docs/latex/experiments/lda_experiment.py}. It requires NumPy and scikit-learn, adds the local \code{src} directory to the import path, and uses scikit-learn only for the standard LinearDiscriminantAnalysis (lsqr) reference and bundled \code{load\_wine} data. It compares that baseline with all five StatCore modes. Five fixed seeds (11, 23, 37, 51, 79) independently regenerate data and splits. Synthetic experiments use three equally likely Gaussian classes, 360 training and 600 test rows (120/300 for the high-dimensional condition), and 12 features (80 features, 10 informative, high-dimensional). The cases are clean shared covariance; translated target-domain features with a separate 500-row unlabeled target adaptation sample; 15\% training-label flips; 8\% contaminated training features drawn from \(N(0,6^2I)\); class-dependent scale 0.55 versus 1.8 on informative features; and high dimension with 70 noise coordinates. Test labels are never supplied to fitting. For non-shift experiments, the shift mode receives a copy of the source training covariates, as the API requires. The Wine case uses a seed-dependent stratified 75/25 split.
+
+Accuracy and natural logarithmic loss are calculated on held-out data. The reported ECE is 10 equal-width confidence bins: \(\sum_b(n_b/n)|\operatorname{acc}(b)-\operatorname{conf}(b)|\), with confidence equal to the largest class probability. Each entry is mean \(\pm\) sample standard deviation over five seeds. Values below are direct output from the script using the repository environment; they are not cross-validation estimates and are not corrected for multiple comparisons. The synthetic generator, model defaults, split logic, metrics, and seeds are completely specified in the executable script.
+
+\subsection{Measured metrics}
+Tables~\ref{tab:lda-main-a}--\ref{tab:lda-main-b} give all evaluated classification metrics. Base and shift-corrected entries coincide in the non-shifted cases because the experiment passes an exact copy of source covariates as the target sample (a same-domain control); the resulting domain classifier returns equal source weights up to numerical precision.
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{LDA evaluation, clean, shifted, label-noisy, and outlier-contaminated synthetic cases; entries are mean $\pm$ sample SD.}
+\label{tab:lda-main-a}
+\begin{tabular}{llccc}
+\toprule
+Case & Method & Accuracy & Log-loss & ECE \\
+\midrule
+clean & sklearn LDA & .8947 $\pm$ .0148 & .2649 $\pm$ .0143 & .0245 $\pm$ .0060 \\
+ & base & .8947 $\pm$ .0148 & .2649 $\pm$ .0143 & .0245 $\pm$ .0060 \\
+ & shift-corrected & .8947 $\pm$ .0148 & .2649 $\pm$ .0143 & .0245 $\pm$ .0060 \\
+ & shrinkage & .8983 $\pm$ .0120 & .2545 $\pm$ .0171 & .0215 $\pm$ .0093 \\
+ & sparse & .9027 $\pm$ .0127 & .2525 $\pm$ .0162 & .0198 $\pm$ .0060 \\
+ & heteroscedastic & .8893 $\pm$ .0132 & .2882 $\pm$ .0118 & .0326 $\pm$ .0017 \\
+\midrule
+shifted & sklearn LDA & .8633 $\pm$ .0150 & .3529 $\pm$ .0436 & .0481 $\pm$ .0143 \\
+ & base & .8633 $\pm$ .0150 & .3529 $\pm$ .0436 & .0481 $\pm$ .0143 \\
+ & shift-corrected & .7960 $\pm$ .0207 & .7632 $\pm$ .1332 & .1315 $\pm$ .0231 \\
+ & shrinkage & .8703 $\pm$ .0168 & .3334 $\pm$ .0339 & .0358 $\pm$ .0080 \\
+ & sparse & .8673 $\pm$ .0167 & .3383 $\pm$ .0326 & .0318 $\pm$ .0096 \\
+ & heteroscedastic & .8517 $\pm$ .0106 & .3903 $\pm$ .0292 & .0533 $\pm$ .0152 \\
+\midrule
+label-noise & sklearn LDA & .8837 $\pm$ .0076 & .3674 $\pm$ .0238 & .1123 $\pm$ .0190 \\
+ & base & .8837 $\pm$ .0076 & .3674 $\pm$ .0238 & .1123 $\pm$ .0190 \\
+ & shift-corrected & .8837 $\pm$ .0076 & .3674 $\pm$ .0238 & .1123 $\pm$ .0190 \\
+ & shrinkage & .8910 $\pm$ .0057 & .3387 $\pm$ .0240 & .0988 $\pm$ .0222 \\
+ & sparse & .8973 $\pm$ .0077 & .4017 $\pm$ .0317 & .1705 $\pm$ .0229 \\
+ & heteroscedastic & .8513 $\pm$ .0156 & .4247 $\pm$ .0387 & .0819 $\pm$ .0128 \\
+\midrule
+outliers & sklearn LDA & .8557 $\pm$ .0091 & .4912 $\pm$ .0715 & .1719 $\pm$ .0510 \\
+ & base & .8557 $\pm$ .0091 & .4912 $\pm$ .0715 & .1719 $\pm$ .0510 \\
+ & shift-corrected & .8557 $\pm$ .0091 & .4912 $\pm$ .0715 & .1719 $\pm$ .0510 \\
+ & shrinkage & .8817 $\pm$ .0175 & .5001 $\pm$ .0641 & .2283 $\pm$ .0314 \\
+ & sparse & .8850 $\pm$ .0133 & .5933 $\pm$ .0919 & .2986 $\pm$ .0699 \\
+ & heteroscedastic & .7583 $\pm$ .0429 & .5779 $\pm$ .0869 & .0652 $\pm$ .0231 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{LDA evaluation, high-dimensional and heteroscedastic synthetic cases and bundled Wine data; entries are mean $\pm$ sample SD.}
+\label{tab:lda-main-b}
+\begin{tabular}{llccc}
+\toprule
+Case & Method & Accuracy & Log-loss & ECE \\
+\midrule
+high-dimensional & sklearn LDA & .6860 $\pm$ .0348 & 3.8879 $\pm$ 1.4587 & .2832 $\pm$ .0361 \\
+ & base & .6860 $\pm$ .0348 & 3.8878 $\pm$ 1.4587 & .2832 $\pm$ .0361 \\
+ & shift-corrected & .6860 $\pm$ .0348 & 3.8878 $\pm$ 1.4587 & .2832 $\pm$ .0361 \\
+ & shrinkage & .8473 $\pm$ .0136 & .4041 $\pm$ .0653 & .0705 $\pm$ .0242 \\
+ & sparse & .8973 $\pm$ .0255 & .2564 $\pm$ .0374 & .0387 $\pm$ .0171 \\
+ & heteroscedastic & .5420 $\pm$ .0206 & 11.9103 $\pm$ 1.2237 & .4478 $\pm$ .0223 \\
+\midrule
+heteroscedastic & sklearn LDA & .8587 $\pm$ .0089 & .4517 $\pm$ .0310 & .0367 $\pm$ .0071 \\
+ & base & .8587 $\pm$ .0089 & .4517 $\pm$ .0310 & .0367 $\pm$ .0071 \\
+ & shift-corrected & .8587 $\pm$ .0089 & .4517 $\pm$ .0310 & .0367 $\pm$ .0071 \\
+ & shrinkage & .8660 $\pm$ .0087 & .4304 $\pm$ .0219 & .0380 $\pm$ .0073 \\
+ & sparse & .8670 $\pm$ .0108 & .4072 $\pm$ .0213 & .0267 $\pm$ .0148 \\
+ & heteroscedastic & .9313 $\pm$ .0119 & .1927 $\pm$ .0370 & .0200 $\pm$ .0059 \\
+\midrule
+Wine & sklearn LDA & .9733 $\pm$ .0099 & .0947 $\pm$ .0407 & .0275 $\pm$ .0089 \\
+ & base & .9689 $\pm$ .0122 & .0758 $\pm$ .0318 & .0271 $\pm$ .0092 \\
+ & shift-corrected & .9689 $\pm$ .0122 & .0758 $\pm$ .0318 & .0271 $\pm$ .0092 \\
+ & shrinkage & .7778 $\pm$ .0831 & .4985 $\pm$ .0690 & .1368 $\pm$ .0333 \\
+ & sparse & .9778 $\pm$ .0222 & .0687 $\pm$ .0591 & .0233 $\pm$ .0144 \\
+ & heteroscedastic & .9956 $\pm$ .0099 & .0151 $\pm$ .0187 & .0106 $\pm$ .0112 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Interpretation}
+In the 80-dimensional, 120-training-row experiment, base covariance is unstable (accuracy .6860 and log-loss 3.8879); diagonal sparse centroids reach .8973/.2564 and shrinkage .8473/.4041. The behavior illustrates a plausible bias--variance benefit, but depends on this construction and does not establish broad high-dimensional superiority. Under simulated heteroscedasticity, the QDA-like variant raises accuracy from .8587 to .9313 and reduces log-loss from .4517 to .1927. In contrast, class-specific covariance is unreliable with 8\% severe feature outliers (accuracy .7583 versus .8557 base) and in the high-dimensional small-sample case. Shift weighting is notably worse than base on the target-shift evaluation: estimated importance weights, clipping, and an unweighted domain logistic model do not ensure successful correction. On Wine, heteroscedastic scores are strong in this split, whereas shrinkage performs poorly (accuracy .7778); the small dataset and five random splits give wide uncertainty. Sparse means sometimes improve accuracy while worsening calibration: for label noise its .8973 accuracy is paired with .4017 loss and .1705 ECE. ECE here is a coarse descriptive statistic, not a calibration guarantee. Several test conditions also differ in class-conditional sampling, so no universal claim follows.
+
+\section{Limitations and conclusion}
+All estimators require finite numeric features and do not impute missing data, choose operating thresholds, or quantify epistemic uncertainty. Empirical priors may be inappropriate under label shift. The shift-corrected method assumes covariate shift and has no safeguard against poor domain overlap beyond an upper clip; the paper's measured regression is an important negative result. The sparse option thresholds centroids, not arbitrary feature-level coefficients, and its \code{threshold} is unvalidated. Heteroscedastic covariance estimates require more data than the pooled alternative. The shared projection is common-covariance-based even when the QDA-like scoring mode is selected. The benchmark is a small controlled experiment with five seeds, no hyperparameter tuning beyond built-in defaults, no paired inferential test, and one bundled dataset.
+
+The contribution is a precise, auditable account of the currently implemented StatCore LDA family, with variants that expose distinct assumptions and failure modes. Shrinkage, thresholding, covariate weighting, and class-specific covariance are choices to test against deployment data, not reliability guarantees. Reproduction command from the repository root is \code{.venv\\Scripts\\python.exe docs\\latex\\experiments\\lda\_experiment.py}.
+
+\begin{thebibliography}{9}
+\bibitem{fisher1936} R. A. Fisher, ``The use of multiple measurements in taxonomic problems,'' \emph{Annals of Eugenics}, vol. 7, no. 2, pp. 179--188, 1936.
+\bibitem{anderson1958} T. W. Anderson, \emph{An Introduction to Multivariate Statistical Analysis}. New York, NY, USA: Wiley, 1958.
+\bibitem{friedman1989} J. H. Friedman, ``Regularized discriminant analysis,'' \emph{Journal of the American Statistical Association}, vol. 84, no. 405, pp. 165--175, 1989.
+\bibitem{ledoitwolf2004} O. Ledoit and M. Wolf, ``A well-conditioned estimator for large-dimensional covariance matrices,'' \emph{Journal of Multivariate Analysis}, vol. 88, no. 2, pp. 365--411, 2004.
+\bibitem{shimodaira2000} H. Shimodaira, ``Improving predictive inference under covariate shift by weighting the log-likelihood function,'' \emph{Journal of Statistical Planning and Inference}, vol. 90, nos. 2--3, pp. 227--244, 2000.
+\end{thebibliography}
+\end{document}

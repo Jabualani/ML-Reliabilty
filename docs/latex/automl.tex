@@ -1,0 +1,172 @@
+﻿\documentclass[conference]{IEEEtran}
+\input{preamble}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\title{ReliableAutoML: ATTP Partitioning, Fold-Local Preprocessing, and Nested Candidate Selection}
+\author{\jabulaniauthor\and\martinchanzauthor\and\oloratoauthor\and\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+ReliableAutoML is an optional ReliableML companion that prepares heterogeneous tabular data, obtains a train/test partition (by default from \code{attp.s\_attp\_clf}), and selects among learned pipelines using nested stratified cross-validation on the partitioner's training rows. The default candidate pool contains the ReliableML \code{MetaPipelineClassifier} and \code{PerfMetaSelect}, plus five pure-NumPy StatCore adapters when \code{include\_statcore=True}: logistic, LDA, KNN, MLP, and StatCore meta-learning. We formalize the outer candidate score, inner hyperparameter search, selection/refit rule, computational cost, and the distinct selection bias contributed by maximizing noisy scores. The returned partition test rows are not used by candidate model selection, but S-ATTP itself fits partition-design transforms and selects a split by its internal test score; neither that score nor AutoML's internal leaderboard is an unbiased final test estimate. A reproducible experiment script compares every candidate's measured leaderboard score to an independently held-out score of the chosen model and a plain sklearn logistic-regression baseline on synthetic mixed-type, Wine, and Breast Cancer data.
+\end{abstract}
+\begin{IEEEkeywords}
+automated machine learning, nested cross-validation, data preprocessing, model selection, reliability
+\end{IEEEkeywords}
+
+\section{Scope and workflow}
+The companion package is imported as \code{from reliableml\_automl import ReliableAutoML}. Its default configuration is stratified-score selection with \(K=3\) outer folds, light grid search with \(J=2\) inner folds, balanced accuracy, random seed 42, and \code{include\_statcore=True}. It accepts a DataFrame containing a named target, with unique string column names, no missing target labels, at least two classes, and no datetime columns. The selected model is refit as a preprocessing-plus-estimator pipeline and wrapped in \code{ReliablePipeline}; \code{predict\_with\_report}, \code{evaluate}, shift/deterioration assessment, explanations, reason audits, and artifact saving are exposed through that wrapper. The statistical reliability report is distinct from the CV leaderboard and does not itself validate generalization.
+
+\begin{figure}[t]
+\centering
+\fbox{\parbox{0.94\columnwidth}{Raw DataFrame \(\to\) schema validation \(\to\) separate partition-design encoding \(\to\) ATTP train/test split \(\to\) repeated outer candidate evaluation [inner parameter search + fold-local pipeline fit] \(\to\) score ranking \(\to\) final search/refit on partition training rows \(\to\) \code{ReliablePipeline} prediction and reports.}}
+\caption{Implemented ReliableAutoML flow. The internal partition test set is retained in reports but does not enter candidate-score evaluation or final refitting. For \code{s\_attp\_clf}, however, the splitter itself uses candidate partition test scores to choose its split.}
+\label{fig:flow}
+\end{figure}
+
+\section{Integrity and preprocessing pipeline}
+A partition-design representation is constructed separately from model preprocessing. \code{DataIntegrityTransformer} identifies object/string features with at least 50\% numeric parse success (configurable threshold), converts those values, and turns parse failures into missing values. \code{StatisticalDataCleaner} is fit on the full feature table for partition design: numeric missing values use the mode for at most two observed unique values, otherwise the mean only if the implementation's approximately-normal criteria hold (at least 10 values, mean/median difference no more than 0.1 standard deviations, absolute skew below 0.5 and absolute excess kurtosis below 1.5), else the median. Categorical missing values use the first mode or a missing sentinel. Numeric IQR bounds use multiplier 1.5 except heavy mode's 1.0; light mode only records outliers, moderate/heavy cap to bounds. This full-data transformation is for split construction, not the predictive pipeline, and can influence the split design.
+
+For each search fit, the predictive pipeline consists of integrity conversion, fold-fitted cleaning, a column transformer, and classifier. Numeric columns are scaled independently. Auto scaling selects robust scaling if a training feature has values outside \([Q_1-1.5\mathrm{IQR},Q_3+1.5\mathrm{IQR}]\); otherwise fewer than 10 values use min-max, a distribution meeting normal-like criteria uses standard scaling, and all remaining features use min-max. Allowed explicit strategies are standard, robust, minmax, none, and auto. Ordinal columns supplied by the user are encoded using their stated order, mapping unknowns to \(-1\); nominal categorical values become type-tagged tokens, missing values receive a token, then one-hot encoding ignores unseen categories. Numeric text conversion, imputation statistics, outlier flags/bounds, scaler choice, encoder vocabularies, and downstream estimator are fitted inside each inner-search pipeline and each outer-fold's search, preventing validation rows from fitting those stages. The partition-design representation is a deliberate exception and does not enter the predictive estimator.
+
+\section{ATTP split and its interpretation}
+Default partitioning invokes \code{attp.s\_attp\_clf} without option overrides. ReliableAutoML validates that the returned indices are integer positions forming a disjoint, complete partition. It uses only \(I_{\mathrm{tr}}\) in nested model selection and final refit; \(I_{\mathrm{te}}\) is not passed into these procedures. But S-ATTP fits LDA/clustering before partitioning and selects a candidate split using its score on its internal test rows. This reuse induces selection effects in that partition; the code explicitly warns that those rows and splitter score are not a final evaluation. The stronger final design is an untouched representative test set reserved before calling \code{fit}; its labels must not guide partitioner settings, candidate pools, grids, or selection. An outer test split in the experiment scripts is reserved before AutoML receives development rows, so it is not visible to S-ATTP.
+
+\section{Candidate pool and search spaces}
+When callers do not supply \code{candidates}, the default set includes \code{meta\_pipeline} (MetaPipelineClassifier, internal stack folds \(\min(3,K)\)) and \code{perf\_meta\_select} (PerfMetaSelect, internal CV=2), and, if enabled, five StatCore classifiers: \code{sc\_logistic}, \code{sc\_lda}, \code{sc\_knn}, \code{sc\_mlp}, and \code{sc\_meta} (meta folds \(\min(3,K)\)). Standard sklearn classifiers are not implicit defaults; users can supply named candidates.
+
+\begin{table*}[t]
+\caption{Built-in parameter search spaces (native parameters are prefixed by \code{classifier\_\_} for the pipeline). Custom mappings replace the built-in space for that candidate.}
+\label{tab:search}
+\centering
+\begin{tabular}{p{0.20\textwidth}p{0.35\textwidth}p{0.36\textwidth}}
+\toprule
+Candidate & Light grid & Extended randomized distribution\\
+\midrule
+Logistic regression & \(C\in\{0.5,1,2\}\) & \(C\sim\mathrm{loguniform}(10^{-3},10^3)\)\\
+Random Forest/ExtraTrees (optional types) & trees \(\{100,200\}\), depth \(\{\varnothing,10\}\) & trees \(\{100,200,300,500\}\), depth \(\{\varnothing,5,10,20,30\}\), split \(\mathrm{randint}(2,20)\), leaf \(\mathrm{randint}(1,10)\), features \{sqrt, log2, 0.5, 0.8, 1\}\\
+\code{meta\_pipeline} & Meta LogisticRegression with \(C\in\{0.5,1,2\}\) & 25 \(C\) values log-spaced from \(10^{-3}\) to \(10^3\)\\
+\code{perf\_meta\_select} & \code{cv} fixed at its estimator's current value (2) & Same fixed-value search\\
+\code{sc\_logistic} & variants: risk\_calibrated, stat\_regularised, robust\_loss & Same variants; \(\alpha\sim\mathrm{loguniform}(10^{-4},10)\)\\
+\code{sc\_lda} & shrinkage, sparse, heteroscedastic & Same variants; reg\_param \(\in\{0.1,0.3,0.5,0.7\}\)\\
+\code{sc\_knn} & prototype\_compressed, learnable\_metric, stat\_k\_selection & Same variants; neighbors \(\{3,5,9,15\}\), weights {uniform, distance}\\
+\code{sc\_mlp} & stat\_regularised, reliability\_head, uncertainty\_head & Same variants; hidden sizes \((16),(32,32),(64,32)\), dropout \(\{0,0.1,0.3\}\)\\
+\code{sc\_meta} & OOF stacking, calibrated stack & Those plus performance-aware, metrics-based, statistical-meta\\
+\bottomrule
+\end{tabular}
+\end{table*}
+In light mode, \code{GridSearchCV} evaluates the Cartesian product of the candidate's space; in extended mode, \code{RandomizedSearchCV} samples \code{tuning\_iterations} parameter settings using the configured seed. Both use shuffled \(J\)-fold stratified CV, configured scorer, \code{n\_jobs=1}, and refit the best setting on supplied search-training rows. Empty custom/default spaces raise rather than silently skipping tuning. Extended StatCore spaces are broader as tabulated, but variants stay within each corresponding model family. With defaults, several candidate families are more expensive than light grids suggest because their estimators internally cross-fit or search parameters themselves.
+
+\section{Nested scoring and selection estimator}
+Let \(A=I_{\mathrm{tr}}\) contain \(n_A\) rows and let candidate index \(m\in\{1,\ldots,M\}\). For reproducibly shuffled stratified outer fold \(j\), split \(A=A_{-j}\cup A_j\). Run an inner search on \(A_{-j}\):
+\[
+\hat\lambda_{mj}=\arg\max_{\lambda\in\Lambda_m}\frac1J\sum_{r=1}^J s\left(\mathcal A_{m,\lambda}^{(-r)}, A_{-j,r}\right),
+\]
+where \(s\) is the configured sklearn scorer (default balanced accuracy), \(\mathcal A\) includes fold-fit preprocessing and classifier, and in randomized mode \(\Lambda_m\) is the sampled set. Refit best search estimator on all \(A_{-j}\), then score it on outer fold \(A_j\):
+\[
+\begin{aligned}
+S_{mj}&=s(\hat f_{m,\hat\lambda_{mj}}^{A_{-j}},A_j),\\
+\bar S_m&=K^{-1}\sum_{j=1}^K S_{mj},\\
+\hat m&=\arg\max_{m\in\mathcal M_{\mathrm{ok}}}\bar S_m,
+\end{aligned}
+\]
+A tie is resolved by candidate name in lexicographic order. Candidates with caught fitting failures are marked failed and excluded; no successful candidates raises \code{AutoMLFitError}. Successful candidates are sorted by score and name. The winning candidate is finally searched again on all \(A\), with the same search mode/space, and the selected pipeline is fitted through \code{ReliablePipeline}. If final search/refit for the top candidate raises one of the handled errors, the implementation tries the next highest outer-scoring successful candidate; if all fail it raises. The reported leaderboard includes outer mean/std and fold scores, fold-specific best parameters, and selected full-\(A\) search score/parameters for the winner. Inner best score is not substituted for the outer candidate score.
+
+\begin{enumerate}[label=\textbf{R\arabic*.},leftmargin=*]
+\item Validate table and scoring name; create partition-design encoded features and call the selected splitter.
+\item For each default or caller candidate, create a pipeline; across \(K\) outer folds fit a fresh \(J\)-fold grid/randomized search on outer-train and score its best refitted estimator on outer-validation.
+\item Exclude failed candidates; sort successful mean outer scores descending and candidate names ascending.
+\item Re-run the inner search on all partition-train data for ranked candidates until a final fit succeeds; wrap the pipeline as ReliablePipeline and store partition, selection, and cleaning reports.
+\item Evaluate deployment performance only on a separate test set never passed to AutoML selection.
+\end{enumerate}
+
+\section{Selection bias and leakage analysis}
+Conditional on fixed candidate procedures and a truly unbiased outer validation design, each \(\bar S_m\) estimates performance of a procedure that tunes within an outer-training sample. However, selecting the maximum among noisy estimates creates optimism. If \(\bar S_m=\mu_m+\epsilon_m\) with zero-mean estimation noise, then generally \(\mathbb E[\max_m\bar S_m]\ge\max_m\mu_m\); equality is not expected unless noise/selection conditions are degenerate. The outer folds are also dependent because their training sets overlap, and the maximum is not an unbiased estimate of the selected model's deployment performance. Nested CV separates tuning from each outer score for each candidate; it does not eliminate the additional winner's curse from choosing among candidates on the same outer scores. A fresh untouched test set or an additional outermost repeated evaluation of the complete candidate-selection procedure is needed for a final performance claim.
+
+Preprocessing in the candidate pipeline is fold-local and includes missing-value statistics, outlier thresholds, scaler choice/parameters, ordinal and nominal encoding, and classifier fitting. This blocks ordinary preprocessing leakage across inner/outer validation. But the separate partition-design cleaner/encoder is fit on all data given to \code{fit}; ATTP may then use labels and internal test scores to choose among partitions. The internal partition-test rows are deliberately excluded from model leaderboard scoring and final fitting, yet they are not independent of splitter selection. Moreover, the partitioner's test fraction, clustering, data distribution, repeated scorer use, and feature representation affect which train rows AutoML sees. The external test set must be reserved before all such choices. Grouped, temporal, or spatial dependence requires a corresponding split design; stratification alone is not sufficient.
+
+\section{Computational cost}
+For candidate \(m\), let \(G_m\) be the number of parameter settings evaluated (light Cartesian grid size or extended \code{tuning\_iterations}), \(J\) inner folds, \(K\) outer folds, and \(T_m(q)\) one end-to-end fit cost on \(q\) rows. Ignoring search/refit overhead, outer evaluation requires approximately \(K(G_mJ+1)T_m((1-1/K)n_A)\), where the added fit refits the best inner configuration on the full outer training data. Final selection adds \((G_{\hat m}J+2)T_{\hat m}(n_A)\): inner-search fits, the search refit, and the subsequent fit through ReliablePipeline. Total scale is summed across candidates; preprocessing is refit for each search fold. Nested models add internal work, e.g., MetaPipeline and StatCoreMetaClassifier cross-fit their bases. Memory use includes dense one-hot transformed matrices and search CV clones; the categorical encoder is configured dense. This explains why extended search and the StatCore MLP/meta candidates can be costly. Complexity expressions are order accounting, not measured timings.
+
+\section{Experiment design and measured results}
+The accompanying \code{automl\_experiment.py} was run in the AutoML virtual environment (Python 3.15.0, NumPy 2.5.4, pandas 3.1.0, scikit-learn 1.9.1). It creates a fresh stratified 25\% held-out set before ReliableAutoML sees development rows. Each run uses default \code{s\_attp\_clf}, light search, \(K=3\), \(J=2\), balanced accuracy, all seven built-in candidates (including StatCore), and seed 42 or 43. Synthetic data have 240 rows, two numeric and two categorical predictors, injected missing values, and a binary response. Wine has 178 rows/3 classes; Breast Cancer has 569 rows/2 classes. The plain baseline is a separately fit sklearn logistic-regression pipeline with median numeric and mode categorical imputation, standard numeric scaling, one-hot encoding, and balanced class weights. AutoML uses all partition-training rows for its final fit, whereas the baseline is fit on all development rows; thus the training procedures are not identical. The held-out test set remains external to both.
+
+Tables~\ref{tab:auto-seed42} and \ref{tab:auto-seed43} report the actual outer leaderboard mean balanced-accuracy score and standard deviation per candidate. Each mean is across three outer folds, where each candidate is independently tuned on two inner folds; these are selection scores, not held-out performance. All seven candidates completed for every dataset in both seeds.
+
+\begin{table*}[t]
+\caption{ReliableAutoML candidate leaderboard, seed 42: outer mean balanced accuracy $\pm$ outer-fold standard deviation.}
+\label{tab:auto-seed42}
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Candidate & Synthetic mixed & Wine & Breast Cancer\\
+\midrule
+\code{meta\_pipeline} & 0.7659$\pm$0.0335 & 0.9762$\pm$0.0194 & 0.9557$\pm$0.0196\\
+\code{perf\_meta\_select} & 0.7390$\pm$0.0437 & 0.9492$\pm$0.0361 & 0.9557$\pm$0.0181\\
+\code{sc\_logistic} & 0.7529$\pm$0.0111 & 0.9762$\pm$0.0337 & 0.9620$\pm$0.0167\\
+\code{sc\_lda} & 0.7441$\pm$0.0230 & 0.9762$\pm$0.0194 & 0.9398$\pm$0.0293\\
+\code{sc\_knn} & 0.7013$\pm$0.0712 & 0.9524$\pm$0.0389 & 0.9391$\pm$0.0201\\
+\code{sc\_mlp} & 0.6767$\pm$0.1020 & 0.9656$\pm$0.0094 & 0.9652$\pm$0.0070\\
+\code{sc\_meta} & 0.7523$\pm$0.0124 & 0.9683$\pm$0.0297 & 0.9557$\pm$0.0181\\
+\bottomrule
+\end{tabular}
+\end{table*}
+\begin{table*}[t]
+\caption{ReliableAutoML candidate leaderboard, seed 43: outer mean balanced accuracy $\pm$ outer-fold standard deviation.}
+\label{tab:auto-seed43}
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Candidate & Synthetic mixed & Wine & Breast Cancer\\
+\midrule
+\code{meta\_pipeline} & 0.8004$\pm$0.0434 & 0.9915$\pm$0.0121 & 0.9632$\pm$0.0122\\
+\code{perf\_meta\_select} & 0.8080$\pm$0.0423 & 0.9644$\pm$0.0111 & 0.9631$\pm$0.0180\\
+\code{sc\_logistic} & 0.8319$\pm$0.0549 & 0.9690$\pm$0.0223 & 0.9578$\pm$0.0085\\
+\code{sc\_lda} & 0.7594$\pm$0.0408 & 0.9829$\pm$0.0242 & 0.9361$\pm$0.0276\\
+\code{sc\_knn} & 0.8297$\pm$0.0532 & 0.9505$\pm$0.0171 & 0.9443$\pm$0.0100\\
+\code{sc\_mlp} & 0.7363$\pm$0.0353 & 0.9702$\pm$0.0032 & 0.9533$\pm$0.0157\\
+\code{sc\_meta} & 0.8091$\pm$0.0375 & 0.9822$\pm$0.0126 & 0.9533$\pm$0.0148\\
+\bottomrule
+\end{tabular}
+\end{table*}
+Table~\ref{tab:auto-holdout} separates selected-candidate leaderboard values from the external test results. Held-out triplets are balanced accuracy / accuracy / log-loss. The baseline entries are independently computed on the same external rows. One seed selected \code{meta\_pipeline} on synthetic data and the other selected \code{sc\_logistic}; the external balanced-accuracy difference favored the logistic baseline on both synthetic splits. Wine results changed substantially between seeds. On Breast Cancer, AutoML's selection varied (\code{sc\_mlp} or \code{meta\_pipeline}); the plain logistic baseline had lower test log-loss in seed 42 and higher balanced accuracy in seed 43. These contrasts illustrate that leaderboard rank is not an assurance of superior external performance.
+
+\begin{table*}[t]
+\caption{Selected candidate score and independent held-out results. Score triplets are balanced accuracy / accuracy / log-loss; selected CV score is the candidate's outer-CV mean balanced accuracy.}
+\label{tab:auto-holdout}
+\centering\scriptsize
+\begin{tabular}{cllccc}
+\toprule
+Seed & Dataset & AutoML winner (CV mean) & AutoML test & Logistic baseline test & $n_{dev}/n_{test}$\\
+\midrule
+42 & Synthetic mixed & \code{meta\_pipeline} (0.7659) & 0.8170 / 0.8167 / 0.4064 & 0.8326 / 0.8333 / 0.3712 & 180/60\\
+42 & Wine & \code{meta\_pipeline} (0.9762) & 1.0000 / 1.0000 / 0.0180 & 1.0000 / 1.0000 / 0.0647 & 133/45\\
+42 & Breast Cancer & \code{sc\_mlp} (0.9652) & 0.9683 / 0.9650 / 0.1747 & 0.9683 / 0.9650 / 0.0759 & 426/143\\
+43 & Synthetic mixed & \code{sc\_logistic} (0.8319) & 0.7857 / 0.7833 / 0.3900 & 0.8393 / 0.8333 / 0.3756 & 180/60\\
+43 & Wine & \code{meta\_pipeline} (0.9915) & 0.9074 / 0.8889 / 0.2287 & 0.9444 / 0.9333 / 0.1278 & 133/45\\
+43 & Breast Cancer & \code{meta\_pipeline} (0.9632) & 0.9661 / 0.9720 / 0.1278 & 0.9456 / 0.9510 / 0.1322 & 426/143\\
+\bottomrule
+\end{tabular}
+\end{table*}
+These values are real outputs of the scripts and are rounded to four decimals. The leaderboard score, held-out balanced accuracy, and probability log-loss answer different questions; in particular a single-seed perfect Wine result is not evidence of universal performance. Runs of two seeds on each of three small benchmark datasets remain descriptive, and test-label inspection must not inform later AutoML choices. The scripts can reproduce the listed runs and accept more seeds; inference across datasets requires more independent datasets and pre-specified analysis.
+
+\section{Limitations}
+The default ATTP split is an algorithmic partition proposal, not a substitute for independent evaluation. Balanced-accuracy maximization is not utility optimization unless that metric matches deployment priorities. The chosen pipeline can fail on unsupported dtypes, low minority counts, or unsupported custom estimator parameters; some candidate errors are reported and skipped. ReliablePipeline reports provide operational diagnostics and interfaces, not guarantees that predictions are safe, calibrated, fair, or robust. The user must choose representative holdouts, metrics, sensible decision thresholds, and monitoring policies.
+
+\section{Conclusion}
+ReliableAutoML couples schema-aware, fold-fitted preprocessing to nested candidate tuning on an ATTP-derived training partition. Its selection rule is precisely the maximum mean outer-fold score of inner-tuned candidates, followed by a fresh search/refit on all available partition-training rows. The internal partition test is excluded from this model selection, but S-ATTP's own score-driven partition choice makes it unsuitable as a final evaluation set. Reproducible, external evaluation remains essential.
+
+\begin{thebibliography}{10}
+\bibitem{wolpert1992} D. H. Wolpert, ``Stacked generalization,'' \emph{Neural Networks}, vol. 5, no. 2, pp. 241--259, 1992.
+\bibitem{breiman1996} L. Breiman, ``Stacked regressions,'' \emph{Machine Learning}, vol. 24, pp. 49--64, 1996.
+\bibitem{varma2006} S. Varma and R. Simon, ``Bias in error estimation when using cross-validation for model selection,'' \emph{BMC Bioinformatics}, vol. 7, article 91, 2006.
+\bibitem{cawley2010} G. C. Cawley and N. L. C. Talbot, ``On over-fitting in model selection and subsequent selection bias in performance evaluation,'' \emph{Journal of Machine Learning Research}, vol. 11, pp. 2079--2107, 2010.
+\bibitem{pedregosa2011} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\bibitem{software} J. Monchwe \emph{et al.}, ReliableML-AutoML, software repository, 2026. \projecturl.
+\end{thebibliography}
+\end{document}
+
+
+
+
+

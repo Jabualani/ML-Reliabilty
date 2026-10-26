@@ -1,0 +1,98 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Reliability-Oriented K-Means in StatCore: Exact Variants, Objectives, and Empirical Limits}
+\author{\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+This paper gives an implementation-exact account of the pure-NumPy StatCore K-means family. We distinguish Lloyd's squared-Euclidean algorithm with random starts from k-means++-seeded Lloyd optimization; specify graph-smoothed assignment, trimmed coordinatewise k-medians, and BIC/silhouette cluster-count selection; and derive the standard objective and block updates. The topology-aware update is not descent on ordinary inertia, and the robust objective differs from the public squared-Euclidean inertia. We state convergence and computational limits without assigning textbook guarantees to modified methods. Repeated-seed experiments on contaminated synthetic clusters and bundled Iris compare every variant to scikit-learn K-means using external adjusted Rand index, silhouette, and squared-Euclidean inertia. Results are measured and include the possibility of regressions, not evidence of universal superiority.
+\end{abstract}
+\begin{IEEEkeywords}
+K-means, clustering, robust statistics, graph regularization, model selection, reliability
+\end{IEEEkeywords}
+\section{Introduction}
+K-means minimizes within-cluster squared Euclidean distance for a fixed number of clusters. Lloyd's alternating assignment and centroid updates are simple but depend on initialization and can terminate at local minima \cite{lloyd1982,macqueen1967}. K-means++ samples seeds proportional to squared distance and has an expected approximation guarantee for its initial potential, not a global guarantee for a finite Lloyd run \cite{arthurvassilvitskii2007}. StatCore adds topology, robust, and model-selection variants to a standard baseline and an initialization variant. This paper documents \code{src/ml\_reliability/statcore/kmeans/kmeans.py}; method names do not imply stronger theory than the code warrants.
+Inputs are finite numeric \(X\in\mathbb R^{n\times d}\), at least two rows and one feature. Fixed \(k\) is integer in \([1,n]\). Optional labels passed to \code{fit} are ignored. Defaults: \(k=3\), \code{max\_iter}=100, \code{n\_init}=5, \code{tol}=$10^{-6}$, \code{random\_state}=0.
+\section{Standard K-means and Lloyd's algorithm}
+For assignments \(z_i\in\{1,\ldots,k\}\) and centers \(\mu_j\),
+\begin{equation}\label{eq:sse}J(z,\mu)=\sum_i\|x_i-\mu_{z_i}\|_2^2.\end{equation}
+For fixed centers, assigning each row to the nearest center minimizes \(J\) independently. For fixed nonempty cluster \(S_j\), differentiation gives \(\nabla_{\mu_j}\sum_{i\in S_j}\|x_i-\mu_j\|^2=2|S_j|\mu_j-2\sum_{i\in S_j}x_i\); setting it to zero yields the arithmetic mean, the unique minimizer. Therefore exact assignment and mean steps do not increase \(J\). Since there are finitely many labelings, deterministic Lloyd iterations reach a fixed labeling (allowing ties and a consistent tie rule), but only a local solution. A finite iteration cap may stop early.
+\subsection{base: random row starts and best restart}
+Each of \code{n\_init} runs samples \(k\) distinct rows uniformly, then alternates squared-distance assignments and arithmetic means. It keeps the run with smallest final assigned squared-distance sum. It stops only if center shift \(\sum_j\|\mu_j^{new}-\mu_j\|_2^2\leq\code{tol}\) and labels equal the previous iteration, or at \code{max\_iter}. Empty clusters are reseeded to the currently worst-fit row. Ties use NumPy first-index \code{argmin}. At most \(I\) iterations cost \(O(Inkd)\) per restart with \(O(nk)\) cost storage, plus initialization; best of five restarts by default.
+\noindent\textbf{Algorithm 1: StatCore base Lloyd run (one restart).}
+\begin{enumerate}
+\item Draw $k$ distinct data rows as centers; set previous labels to unset.
+\item Assign every row to its nearest squared-Euclidean center (first index breaks ties).
+\item For each nonempty cluster, replace its center by its arithmetic mean; reseed empty clusters at the worst-fit row.
+\item Stop only when squared center shift is at most $\code{tol}$ and labels are unchanged, or after $\code{max\_iter}$; otherwise repeat Step 2.
+\item Recompute ordinary assigned SSE. Across $\code{n\_init}$ restarts, retain the run with the lowest SSE.
+\end{enumerate}
+
+\subsection{better\_init: k-means++}
+The first center is a uniform random row. For each next center, with \(D_i^2\) the minimum squared distance to already chosen centers, sample row \(i\) with probability \(D_i^2/\sum_rD_r^2\); if all distances are zero, choose uniformly. It then runs the same Lloyd and restart-selection routine as base. The classical expected \(O(\log k)\) guarantee is about the initial potential under the standard objective and does not guarantee a global optimum after finite Lloyd iterations. Duplicate points are supported by the zero-potential fallback. Seeding costs \(O(nkd)\) per run.
+\section{Modified methods}
+\subsection{topology\_aware: nearest-neighbor reward in assignment}
+A directed training kNN graph is constructed from Euclidean distances after setting diagonal distances to infinity; stable sorting selects \(m=\min(\code{n\_neighbors},n-1)\) neighbors. The default is 10. Starts are k-means++. On first Lloyd iteration assignment is standard. Subsequently, for previous labels define \(q_{ij}\) as the fraction of row \(i\)'s neighbors labeled \(j\), and \(d_{ij}^2=\|x_i-\mu_j\|^2\). With \(\bar d^2=(nk)^{-1}\sum_{i,j}d_{ij}^2\), code uses
+\begin{equation}\label{eq:topo}\begin{aligned}
+z_i&=\arg\min_j\left[\frac{d_{ij}^2}{\bar d^2+10^{-12}}-\lambda q_{ij}\right],\\
+\lambda&=\code{topology\_weight}.
+\end{aligned}\end{equation}
+The default \(\lambda=0.5\); then ordinary unweighted means update centers. The normalization is across all point-center pairs, not rowwise. The graph term is a reward for previous local agreement, not a globally minimized graph-cut penalty. Means need not minimize the modified assignment score; ordinary SSE can increase, and no descent guarantee follows. The hard shift-and-label stopping condition is unchanged. Importantly, final labels and restart scores are recomputed using ordinary nearest-center distances; graph smoothing is not applied at finalization. Thus the selected restart minimizes final ordinary SSE. Pairwise graph construction costs \(O(n^2d+n^2\log n)\) time and \(O(n^2)\) memory; each iterative pass is approximately \(O(nmk+nkd)\).
+\subsection{robust: trimmed coordinatewise k-medians}
+This branch assigns by Manhattan cost \(a_i=\|x_i-\mu_{z_i}\|_1\), initializes uniformly without replacement, and updates each coordinate to the median of assigned points. For untrimmed assignments, median minimizes the sum of absolute deviations coordinatewise, giving block minimization of \(\sum_i\|x_i-\mu_{z_i}\|_1\). With default trim fraction \(\tau=0.05\), each update retains points satisfying \(a_i\leq Q_{1-\tau}(a)\), NumPy's global quantile; if a cluster has no retained point, it falls back to all points assigned to it. Empty clusters are reseeded at the worst-fit point. Reassignment occurs on all rows each round; center-shift and label-stability stopping, cap, and restart strategy otherwise follow the base routine (random starts, not k-means++).
+With no trimming, alternating exact L1 assignment and median updates has nonincreasing L1 objective; with deterministic tie handling its finite assignment states yield a local fixed point absent premature cap. Trimming couples the retained set globally and does not provide a single fixed objective with guaranteed descent. The implementation does not validate \(0\leq\tau<1\), so invalid values may cause quantile errors or unexpected behavior. \code{objective\_} reports final L1 costs, but \code{inertia\_} is always squared-L2 SSE, as are shared clustering metrics. \code{transform} alone returns L1 for robust and Euclidean distances otherwise. These are different quantities and must not be conflated.
+\subsection{stat\_model\_selection: BIC or silhouette}
+For \(\code{k\_range}=(\ell,h)\), default \((2,8)\), it checks \(\ell\ge2, h\ge\ell\), caps \(h\) at \(n-1\), and fits every candidate with k-means++ (seed \code{random\_state}+k), five restarts by default. If the cap makes \(h<\ell\), no candidates are fit and the current implementation fails rather than falling back. Criterion does not change the candidate-fitting objective.
+For BIC, let SSE be ordinary final squared error, \(\hat v=\max(\mathrm{SSE}/[\max(n-k,1)d],10^{-12})\), and \(n_j\) be nonzero cluster sizes. The implemented approximate log score and parameter count are
+\begin{align*}\ell_k&=\sum_{j:n_j>0}n_j\log(n_j/n)-\tfrac12nd\log(2\pi\hat v)-\tfrac12(n-k)d,\\
+p_k&=(k-1)+kd+1,\quad \mathrm{BIC}_k=-2\ell_k+p_k\log n.
+\end{align*}
+The selected model has minimum BIC; \code{scores\_[k]} stores BIC itself. This resembles a spherical common-variance hard-assignment Gaussian-mixture approximation, not the exact maximized general mixture likelihood: variance denominator is coded as above, cluster weights enter separately, and empty centers have no explicit likelihood model. BIC selection is criterion optimization over a finite range, not recovery guarantee of a true cluster count.
+For silhouette, pairwise Euclidean distances yield own-cluster mean \(a_i\) excluding self (denominator \(n_{z_i}-1\)) and nearest-other-cluster mean \(b_i\). Score \((b_i-a_i)/\max(a_i,b_i,10^{-12})\) is averaged; singleton rows score zero. Fewer than two unique clusters gives zero. The maximum-silhouette candidate wins. This costs \(O(n^2d+n^2)\) time and \(O(n^2)\) memory. The selection procedure does not nest validation, and a criterion optimized on the same data can be optimistic.
+\subsection{Shared API and numerical behavior}
+Squared distances use \(\|x\|^2+\|\mu\|^2-2x^\top\mu\), clipped below at zero. Inputs are finite and feature count fixed at prediction. No automatic scaling or missing-data treatment is provided; large-scale features dominate. \code{predict} returns nearest-center labels (L1 only for robust), \code{fit\_predict} training labels, and \code{evaluate} shared clustering metrics. None quantify assignment uncertainty or seed stability. Empty-cluster reseeding and deterministic first-index tie resolution affect trajectories.
+\begin{table*}[t]\caption{Exact differences among KMeans variants; complexities are per restart unless noted.}\label{tab:variants}\centering\scriptsize
+\begin{tabular}{p{1.45cm}p{2.4cm}p{2.4cm}p{2.5cm}p{2.5cm}p{1.5cm}}\toprule
+Variant & Initialization and assignment & Update / selection & Objective reported & Guarantee & Defaults\\\midrule
+base & Uniform unique rows; squared L2 & Mean; best ordinary SSE & SSE & Lloyd descent to local solution (unless capped) & \(k=3,R=5,I=100\)\\
+better\_init & D-squared k-means++; squared L2 & Same as base & SSE & Same Lloyd guarantee; seeding bound is initial-potential only & seed 0\\
+\shortstack{topology\\aware} & k-means++; normalized SSE less neighbor reward & Means; final restart chosen by ordinary SSE & Transient smoothed score; public SSE & No ordinary-SSE descent guarantee & \(m=10,\lambda=.5\)\\
+robust & Uniform rows; L1 assignment & Coordinate median on retained global quantile & L1 objective; L2 inertia & Untrimmed L1 block descent; trim has no shared monotone objective & \(\tau=.05\)\\
+\shortstack{stat. model\\selection} & k-means++ for each candidate & Minimum approximate BIC or max silhouette & Chosen criterion plus L2 inertia & Criterion selection only; no true-k guarantee & \(k=2\ldots8\), BIC\\\bottomrule
+\end{tabular}\end{table*}
+\section{Empirical study}
+The attached \code{experiments/kmeans\_experiment.py} compares each variant against scikit-learn KMeans as standard reference \cite{pedregosa2011}, on synthetic and bundled Iris data. Synthetic data comprise three Gaussian clusters in four dimensions and 18 broad training-only contaminants; held-out points are uncontaminated. Iris is split per seed, and its labels provide external evaluation only; they are not given to the clustering model. Training means and standard deviations standardize both train and test, replacing zero scales by one. Five seeds are 11, 23, 37, 51, 71. Reference and fixed-\(k\) methods use \(k=3\), five restarts; model selection uses BIC over 2--6. Held-out metrics are ARI versus generating/class labels (higher), silhouette (higher), and squared-L2 SSE (lower). For model selection, different \(k\) can change SSE mechanically, so inertia is not a standalone ranking. The script computes metrics directly and writes LaTeX cells only from executed output.
+\begin{table*}[t]\caption{Held-out metrics, mean $\pm$ sample SD over five seeds. Higher ARI/silhouette is preferred; lower SSE is preferred only at comparable cluster count.}\label{tab:results}\centering\scriptsize
+\begin{tabular}{llrrr}\toprule Dataset & Method & ARI & Silhouette & SSE\\\midrule
+Synthetic & Reference KMeans & \input{build/km-synthetic-reference-ari.tex} & \input{build/km-synthetic-reference-sil.tex} & \input{build/km-synthetic-reference-sse.tex}\\
+Synthetic & base & \input{build/km-synthetic-base-ari.tex} & \input{build/km-synthetic-base-sil.tex} & \input{build/km-synthetic-base-sse.tex}\\
+Synthetic & topology\_aware & \input{build/km-synthetic-topology-aware-ari.tex} & \input{build/km-synthetic-topology-aware-sil.tex} & \input{build/km-synthetic-topology-aware-sse.tex}\\
+Synthetic & stat\_model\_selection & \input{build/km-synthetic-stat-model-selection-ari.tex} & \input{build/km-synthetic-stat-model-selection-sil.tex} & \input{build/km-synthetic-stat-model-selection-sse.tex}\\
+Synthetic & robust & \input{build/km-synthetic-robust-ari.tex} & \input{build/km-synthetic-robust-sil.tex} & \input{build/km-synthetic-robust-sse.tex}\\
+Synthetic & better\_init & \input{build/km-synthetic-better\_init-ari.tex} & \input{build/km-synthetic-better\_init-sil.tex} & \input{build/km-synthetic-better\_init-sse.tex}\\
+Iris & Reference KMeans & \input{build/km-iris-reference-ari.tex} & \input{build/km-iris-reference-sil.tex} & \input{build/km-iris-reference-sse.tex}\\
+Iris & base & \input{build/km-iris-base-ari.tex} & \input{build/km-iris-base-sil.tex} & \input{build/km-iris-base-sse.tex}\\
+Iris & topology\_aware & \input{build/km-iris-topology-aware-ari.tex} & \input{build/km-iris-topology-aware-sil.tex} & \input{build/km-iris-topology-aware-sse.tex}\\
+Iris & stat\_model\_selection & \input{build/km-iris-stat-model-selection-ari.tex} & \input{build/km-iris-stat-model-selection-sil.tex} & \input{build/km-iris-stat-model-selection-sse.tex}\\
+Iris & robust & \input{build/km-iris-robust-ari.tex} & \input{build/km-iris-robust-sil.tex} & \input{build/km-iris-robust-sse.tex}\\
+Iris & better\_init & \input{build/km-iris-better\_init-ari.tex} & \input{build/km-iris-better\_init-sil.tex} & \input{build/km-iris-better\_init-sse.tex}\\\bottomrule\end{tabular}\end{table*}
+These small benchmarks cannot prove population superiority. Synthetic contamination is controlled; Iris is small and its semantic classes need not be spherical clusters. ARI measures agreement with labels, not necessarily operational utility. Selection may prefer another \(k\) and reduce ARI. Five seeds describe limited split/init variability, not uncertainty intervals. The limitations and variants that regress should inform model choice, not be hidden.
+\section{Limitations and conclusion}
+Scaling, local minima, and distribution shift remain material. Topology smoothing can propagate wrong neighbors and is not descent; trimming can delete real rare clusters; the coded BIC is an approximation. Neither inertia nor silhouette is uncertainty calibration. Base and better initialization retain ordinary Lloyd descent; other variants modify its objectives and cannot inherit those guarantees. Reproducible, task-specific evaluation remains necessary.
+\begin{thebibliography}{9}
+\bibitem{lloyd1982} S. P. Lloyd, ``Least squares quantization in PCM,'' \emph{IEEE Transactions on Information Theory}, vol. 28, no. 2, pp. 129--137, 1982.
+\bibitem{macqueen1967} J. MacQueen, ``Some methods for classification and analysis of multivariate observations,'' in \emph{Proc. Fifth Berkeley Symp. Mathematical Statistics and Probability}, vol. 1, 1967, pp. 281--297.
+\bibitem{arthurvassilvitskii2007} D. Arthur and S. Vassilvitskii, ``k-means++: The advantages of careful seeding,'' in \emph{Proc. 18th Annual ACM-SIAM Symp. Discrete Algorithms}, 2007, pp. 1027--1035.
+\bibitem{rousseeuw1987} P. J. Rousseeuw, ``Silhouettes: A graphical aid to the interpretation and validation of cluster analysis,'' \emph{Journal of Computational and Applied Mathematics}, vol. 20, pp. 53--65, 1987.
+\bibitem{schwarz1978} G. Schwarz, ``Estimating the dimension of a model,'' \emph{The Annals of Statistics}, vol. 6, no. 2, pp. 461--464, 1978.
+\bibitem{pedregosa2011} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\bibitem{software} J. Monchwe \emph{et al.}, ``ReliableML: Reliability-oriented machine learning,'' software repository, \url{https://github.com/Jabualani/ML-Reliabilty}, accessed Oct. 2026.
+\end{thebibliography}
+\end{document}

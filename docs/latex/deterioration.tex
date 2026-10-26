@@ -1,0 +1,62 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{A Descriptive Bootstrap Trend for Accuracy Deterioration Across Labeled Batches}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Once outcomes arrive after deployment, performance can be summarized over dated batches. This paper documents ReliableML's deterioration analysis: accuracy is calculated for each labeled batch, regressed on time, and the slope is bootstrapped by resampling rows within each batch. A deterioration flag is raised only when the percentile interval for the accuracy slope lies entirely below zero. The procedure is deliberately described as a descriptive trend analysis. It does not adjust for case mix, serial dependence, changes in labeling, or varying batch precision and cannot attribute a decline to a particular cause.
+\end{abstract}
+
+\begin{IEEEkeywords}
+model monitoring, performance deterioration, accuracy trend, bootstrap, concept drift
+\end{IEEEkeywords}
+
+\section{Introduction}
+Input drift may precede, accompany, or occur without a change in predictive performance. Detecting an accuracy decline requires time-indexed true outcomes, which are often delayed in production. Concept-drift literature emphasizes that changes in populations and target relationships vary across settings and require context-specific treatment \cite{gama2014}. ReliableML's method summarizes a simple temporal association \cite{software}; it is not a drift-adaptation algorithm or a causal diagnosis.
+
+\section{Estimand and model}
+Let batch \(j=1,\ldots,J\) have timestamp \(t_j\), true labels \(y_{ij}\), and predictions \(\hat y_{ij}\). Its empirical accuracy is
+\[
+a_j=\frac{1}{n_j}\sum_{i=1}^{n_j}\mathbb{I}(y_{ij}=\hat y_{ij}).
+\]
+After ordering batches by timestamp, ordinary least squares fits \(a_j=\beta_0+\beta_1 t_j+\varepsilon_j\). The slope estimate is
+\[
+\hat\beta_1=
+\frac{\sum_j(t_j-\bar t)(a_j-\bar a)}
+{\sum_j(t_j-\bar t)^2}.
+\]
+The estimate is measured as accuracy change per unit of the timestamp representation. The report also provides the regression p-value and requires at least three distinct dates. Each batch contributes one equally weighted observation regardless of sample size; the point estimate is therefore not pooled per-row accuracy and does not weight by precision.
+
+\section{Within-batch bootstrap}
+For each bootstrap replicate \(b\), the algorithm independently samples \(n_j\) row indices with replacement within every batch \(j\), recalculates \(a_j^{(b)}\), and refits the regression to obtain \(\hat\beta_1^{(b)}\), following the general bootstrap principle \cite{efron1979}. The reported percentile interval is
+\[
+\left[Q_{\alpha/2}\{\hat\beta_1^{(b)}\},
+Q_{1-\alpha/2}\{\hat\beta_1^{(b)}\}\right],
+\]
+where \(1-\alpha\) is the configured confidence level. A deterioration flag is set only when the upper endpoint is below zero. The bootstrap reflects within-batch row resampling variation under an independent-row assumption; it does not resample time points or estimate uncertainty from the choice of time window.
+
+\section{Data requirements and operational protocol}
+Every record must contain a consistent numeric or parseable date/time timestamp, aligned true and predicted labels, and a distinct date. Three dates are the minimum accepted by the implementation, but more periods are usually needed for a credible trend analysis. Freeze prediction and label definitions, document outcome delay and missingness, and retain batch sizes. Analyze performance separately by important groups and inspect calibration and class-specific errors in addition to accuracy.
+
+\section{Assumptions and limitations}
+The linear trend is an approximation that can obscure nonlinear changes, abrupt breakpoints, seasonality, autocorrelation, or recovery. A declining slope may reflect changing case mix, population composition, policy, data collection, or labeling rather than model deterioration. Unequal batch sizes receive equal weight in the fitted line, while a small batch's accuracy is noisier than a large batch's. Within-batch row bootstrap does not handle repeated users, facilities, or time dependence. The ordinary regression p-value inherits its own assumptions and is not a causal test. A negative slope interval is evidence of a downward pattern under this design, not a trigger that automatically justifies retraining.
+
+\section{Conclusion}
+ReliableML provides a transparent first-order summary for dated labeled batches: estimated accuracy slope, row-bootstrap interval, regression p-value, and a conservative interval-based flag. Sound operational conclusions require richer temporal designs, adequate batch sizes, stable labels, and adjustment or stratification for relevant population changes.
+
+\begin{thebibliography}{9}
+\bibitem{gama2014} J. Gama, I. Zliobaite, A. Bifet, M. Pechenizkiy, and A. Bouchachia, ``A survey on concept drift adaptation,'' \emph{ACM Computing Surveys}, vol. 46, no. 4, 2014.
+\bibitem{efron1979} B. Efron, ``Bootstrap methods: Another look at the jackknife,'' \emph{The Annals of Statistics}, vol. 7, no. 1, pp. 1--26, 1979.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

@@ -1,0 +1,88 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Reliability-Oriented Principal Component Analysis in StatCore: Exact Algorithms and Empirical Limits}
+\author{\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+\begin{abstract}
+This paper documents the pure-NumPy StatCore PCA family by executable behavior rather than names alone. We define base SVD PCA and all selectable variants: supervised row-aware weighted PCA, residual-reweighted robust PCA, thresholded sparse power iterations with deflation, and a closed-form probabilistic PCA (PPCA) fit. Centering, weights, stopping, transformation, reconstruction, assumptions, and complexity are specified exactly. The robust and sparse methods are heuristics without global guarantees; the PPCA inverse transform also differs algebraically from conventional conditional-mean reconstruction. Five-seed experiments on contaminated synthetic data and bundled Wine compare held-out reconstruction MSE against scikit-learn PCA as the standard reference. Results are measured rather than inferred, and do not establish general superiority.
+\end{abstract}
+\begin{IEEEkeywords}
+principal component analysis, robust statistics, sparse PCA, probabilistic PCA, reliability, NumPy
+\end{IEEEkeywords}
+\section{Introduction}
+PCA chooses a low-dimensional linear subspace minimizing squared Euclidean reconstruction error, whose classical solution follows from the singular value decomposition (SVD) \cite{pearson1901,jolliffe2002}. StatCore provides this reference and four alternatives motivated by reliability. Since terms such as ``robust'' and ``sparse'' cover many algorithms, we specify the behavior of \code{src/ml\_reliability/statcore/pca/pca.py}, not an idealized textbook substitute. The API requires finite numeric \(X\in\mathbb R^{n\times d}\), at least two rows and one feature; \(k\) must be integer in \([1,\min(n,d)]\). Optional \(y\) must be a one-dimensional sample-aligned vector. Features are not automatically standardized.
+\section{Notation and standard PCA}
+Let rows be \(x_i^\top\), mean \(\bar x=n^{-1}\sum_i x_i\), centered matrix \(X_c=X-\mathbf1\bar x^\top\), and thin SVD \(X_c=U\Sigma V^\top\), with singular values \(s_1\ge\cdots\ge0\). For orthonormal row loadings \(C\in\mathbb R^{k\times d}\),
+\begin{equation}\label{eq:obj}
+\min_{CC^\top=I_k}\|X_c-X_cC^\top C\|_F^2.
+\end{equation}
+Expanding gives \(\|X_c\|_F^2-\operatorname{tr}(CX_c^\top X_cC^\top)\); the Ky Fan maximum principle yields \(C=V_k^\top\), minimum \(\sum_{j>k}s_j^2\), with nonunique optimal subspace under tied eigenvalues. The \code{base} implementation uses this centered thin SVD. It reports population explained variances \(s_j^2/n\), not unbiased sample variances. Scores are \(X_cC^+\) (equal to \(X_cC^\top\) for orthonormal \(C\)); inverse transform is \(ZC+\bar x\). Zero singular values yield zero variance without invalidating the SVD basis. Dense SVD costs \(O(nd\min(n,d))\).
+\section{Implemented variants}
+\subsection{supervised\_row\_aware: adaptive weighted PCA}
+An ordinary centered SVD first supplies the leading \(q=\min(k,\operatorname{rows}(V^\top))\) loadings. Scores \(t_i=(x_i-\bar x)V_q\) and variances \(v_j=\max(s_j^2/n,10^{-12})\) define \(D_i^2=\sum_j t_{ij}^2/v_j\). Let \(h=2.5\operatorname{median}(D^2)+10^{-12}\). Initial outlier factor is \(a_i=\min(1,h/D_i^2)\) for \(D_i^2>h\), and one otherwise. If labels are given, multiply by \(n/(C_y n_{y_i})\), with \(C_y\) the number of observed classes and \(n_c\) their counts. Normalize final weights to \(w_i=n a_i/\sum_j a_j\), so \(\sum_iw_i=n\).
+The weighted mean is \(\mu_w=\sum_iw_ix_i/n\). Components are the top right singular vectors of \(\operatorname{diag}(\sqrt w)(X-\mathbf1\mu_w^\top)\). Conditional on these data-derived weights, this exactly minimizes \(\sum_iw_i\|(x_i-\mu_w)-(x_i-\mu_w)C^\top C\|^2\) over orthonormal loadings: the ordinary SVD trace derivation applies to the weighted matrix. Labels enter only through inverse class frequency; this is not a discriminant objective. Class rebalancing may amplify noisy minority examples. Weights are positive for finite data; the exact weighted PCA solution has no iterative convergence issue. The extra initial SVD and weighted SVD each cost \(O(nd\min(n,d))\). Reported variance is \(s_j^2/\max(\sum_iw_i,1)\), while explained-variance ratios divide by the unweighted total centered variance, and therefore need not sum to one.
+\subsection{robust: median start and residual reweighting}
+The coordinatewise median \(m\) centers the data, \(A=X-\mathbf1m^\top\). Coordinate scales are \(b_j=1.4826\operatorname{median}|A_{ij}|+10^{-12}\); row magnitudes \(r_i=\|A_i/b\|_2\) give initial cutoff \(c_0=\operatorname{median}(r)+1.345(1.4826)\operatorname{median}|r-\operatorname{median}(r)|\). Initial weights are \(w_i=[\min(1,c_0/\max(r_i,10^{-12}))]^2\). The initial exponent is two; subsequent reweighting is not squared.
+For at most ten rounds, compute weighted location \(\mu_t=\sum_iw_iA_i/\sum_iw_i\), weighted SVD of \(A-\mathbf1\mu_t^\top\), and top \(k\) loadings \(C_t\). Orthogonal residual \(e_i=(A_i-\mu_t)-(A_i-\mu_t)C_t^\top C_t\), norm \(q_i=\|e_i\|\), scale \(s=1.4826\operatorname{median}|q-\operatorname{median}(q)|+10^{-12}\), and cutoff \(c=\operatorname{median}(q)+1.345s\) define \(w_i^{new}=\min(1,c/\max(q_i,10^{-12}))\). Stop when \(\max_i|w_i^{new}-w_i|<10^{-6}\), or after ten iterations. The public mean remains the coordinate median; internal weighted means affect the fitted directions only.
+This is a Huber-motivated reweighting heuristic \cite{huber1981}, not an optimizer of one fixed robust PCA objective. Its initialization uses standardized coordinatewise outlyingness; later weights use orthogonal residuals, and both location and subspace change. No monotonic decrease, stationarity, or breakdown-point guarantee follows. Maximum cost is ten dense weighted SVDs, about \(O(10nd\min(n,d))\). Epsilon guards constant coordinates/zero residuals. The final weights can be updated after the tenth SVD and thus not exactly match its fitted components. A robust fit may suppress legitimate rare directions.
+\noindent\textbf{Algorithm 1: Implemented robust reweighting.}
+\begin{enumerate}
+\item Set location to the coordinate median; calculate scaled row magnitudes and squared initial clipped weights as defined above.
+\item For at most ten rounds, compute the weighted mean and top-$k$ right singular vectors; form orthogonal residual norms.
+\item Re-estimate the MAD scale and cutoff; set each new weight to $\min(1,c/\max(q_i,10^{-12}))$.
+\item Stop if the maximum weight change is below $10^{-6}$; otherwise continue. Return the last SVD directions, median location, and current weights.
+\end{enumerate}
+
+\subsection{sparse: thresholded power iterations and deflation}
+Starting with \(R=X_c\), each of \(k\) components initializes \(v\) as the leading right singular vector of \(R\) plus \(10^{-3}\xi\), \(\xi\sim N(0,I_d)\), seeded by NumPy \code{default\_rng(random\_state)}; it normalizes \(v\). Up to \code{n\_iter} (default 100) iterations compute
+\begin{align*}
+u&=Rv/\|Rv\|_2,\qquad z=R^\top u,\\
+\tau&=\alpha\|z\|_\infty,\qquad \tilde v=\operatorname{sign}(z)(|z|-\tau)_+,\\
+v_{new}&=\tilde v/\|\tilde v\|_2.
+\end{align*}
+If \(\|Rv\|<10^{-12}\), stop; if \(\|\tilde v\|<10^{-12}\), use \(z\) instead; stop on \(\|v_{new}-v\|<10^{-8}\). The loading is appended and \(R\leftarrow R-(Rv)v^\top\). This sequential rank-one deflation does not enforce orthogonality. The threshold is a fraction \(\alpha\) (default 0.1) of the maximum absolute correlation, not an absolute penalty parameter. It resembles sparse power methods but is not an exact global solution to a canonical sparse-PCA objective, and no global monotonic guarantee is available. Cost is up to \(O(knd\,\code{n\_iter})\) multiplies plus a leading SVD per component, up to \(O(knd\min(n,d))\).
+Stored loadings \(C\) can be nonorthogonal. Transform uses \(X_cC^+\); inverse is \(ZC+\bar x\), i.e., least-squares reconstruction in the loading span. The reported variance is coordinatewise population variance of \(X_cC^+\), not a variance decomposition or the thresholded objective. Defaults are \(k=2,\alpha=.1,\code{n\_iter}=100,\code{random\_state}=0\); ranges are not validated. Degenerate residuals can trigger zero-vector fallbacks.
+\subsection{probabilistic: closed-form PPCA fit}
+PPCA models \(x=Wz+\mu+\epsilon\), \(z\sim N(0,I_k)\), \(\epsilon\sim N(0,\sigma^2I_d)\). For centered SVD eigenvalues \(\lambda_j=s_j^2/n\), the maximum-likelihood covariance solution for Gaussian iid observations uses leading eigenvectors and \(\hat\sigma^2=(d-k)^{-1}\sum_{j>k}\lambda_j\) when \(d>k\), \(\hat W_j=v_j\sqrt{\max(\lambda_j-\hat\sigma^2,0)}\) \cite{tippingbishop1999}. Code floors noise variance at \(10^{-10}\), uses zero before flooring if \(d\leq k\), stores leading \(V_k^\top\), and reports \(\lambda_1,\ldots,\lambda_k\). No likelihood optimization is run.
+With \(M=W^\top W+\sigma^2I\), conventional posterior mean is \(M^{-1}W^\top(x-\mu)\). The implemented transform \((x-\mu)^\top W M^{-\top}\) agrees since \(M\) is symmetric. But inverse transform is \(z^\top(MW^+)+\mu\), not conventional PPCA conditional-mean reconstruction \(z^\top W^\top+\mu\). Even for nonzero orthogonal columns this introduces eigenvalue-dependent rescaling; zero columns accentuate the discrepancy. This code-specific round trip is not generally the PPCA conditional expectation. The fitted covariance model is conventional; the API decoder is not.
+\subsection{Shared API, edge conditions, and comparison}
+All methods require finite arrays and fixed inference feature count. \code{score\_samples} is per-row MSE using each method's actual encode/decode path; \code{evaluate} returns reconstruction metrics. There is no missing-value handling, whitening, automatic scaling, or uncertainty calibration. Ratios use the unweighted total variance and return zeros for zero-total variance. Components are orthogonal except sparse; methods have different score conventions.
+\begin{table*}[t]\caption{Implemented PCA variants: exact operation and warranted guarantee.}\label{tab:variants}\centering\scriptsize
+\setlength{\tabcolsep}{1pt}\begin{tabular}{p{1.45cm}p{2.5cm}p{2.5cm}p{2.55cm}p{2.4cm}p{1.6cm}}\toprule
+Variant & Location and weighting & Direction estimator & Guarantees / caveats & Controls (defaults) & Complexity\\\midrule
+base & Arithmetic mean, unit weights & Top right SVD vectors & Global squared-error optimum & \(k=2\) & One SVD\\
+\shortstack{supervised\\row-aware} & Weighted mean; outlier and optional class-balance weights & Weighted SVD & Exact PCA conditional on weights; labels do not enter a discriminant loss & optional \(y\); cutoff 2.5 & Two SVDs\\
+robust & Coordinate median; initial squared then residual Huber weights & Up to 10 weighted SVD re-fits & Heuristic, no common monotone objective & cutoff 1.345; stop \(10^{-6}\) & Up to 10 SVDs\\
+sparse & Arithmetic mean, unit weights & Soft-thresholded alternating powers and deflation & No global optimum; loadings not orthogonal & \(\alpha=.1\), 100 rounds, seed 0 & Up to \(k\) SVDs + iterations\\
+probabilistic & Arithmetic mean; isotropic noise ML estimate & Leading eigenvectors and PPCA loading scales & Gaussian covariance fit; inverse map nonstandard & noise floor \(10^{-10}\) & One SVD\\\bottomrule
+\end{tabular}\end{table*}
+\section{Empirical study}
+The attached \code{experiments/pca\_experiment.py}, run from repository root using the project interpreter, compares StatCore and scikit-learn \code{PCA} as the ordinary reference \cite{pedregosa2011}. Synthetic data use a two-dimensional latent Gaussian embedded in six dimensions; 320 contaminated training rows include 24 featurewise gross outliers while 80 test rows are clean. Wine is the bundled 178-row, 13-feature classification dataset; each seed creates a deterministic 75/25 split, with labels supplied only to the row-aware method. All methods share training-only standardization (zero scales replaced by one), \(k=2\), seeds 11, 23, 37, 51, 71. Metric is held-out reconstruction MSE, lower better; entries are mean and sample SD. The script writes numeric LaTeX cells only after measurement.
+\begin{table}[t]\caption{Held-out reconstruction MSE, mean $\pm$ sample SD over five seeds (lower is better).}\label{tab:results}\centering\scriptsize
+\begin{tabular}{lcc}\toprule Method & Synthetic & Wine\\\midrule
+Reference PCA & \input{build/pca-synthetic-reference.tex} & \input{build/pca-wine-reference.tex}\\
+base & \input{build/pca-synthetic-base.tex} & \input{build/pca-wine-base.tex}\\
+supervised\_row\_aware & \input{build/pca-synthetic-supervised-row-aware.tex} & \input{build/pca-wine-supervised-row-aware.tex}\\
+robust & \input{build/pca-synthetic-robust.tex} & \input{build/pca-wine-robust.tex}\\
+sparse & \input{build/pca-synthetic-sparse.tex} & \input{build/pca-wine-sparse.tex}\\
+probabilistic & \input{build/pca-synthetic-probabilistic.tex} & \input{build/pca-wine-probabilistic.tex}\\\bottomrule\end{tabular}\end{table}
+These are small descriptive experiments, not claims of statistical significance. Standardization changes the PCA estimand; the synthetic contamination is controlled; Wine is not a deployment population; and reconstruction error is not downstream prediction quality or calibrated uncertainty. Scikit-learn is used only for the reference estimator and dataset loading. A method may be worse than the reference, and all comparisons require task-specific validation.
+\section{Conclusion}
+Base PCA has the classical optimum; row-aware weighted SVD exactly solves its conditional weighted problem; robust and sparse methods are finite heuristics whose guarantees must not be overstated. PPCA's covariance fit follows the standard closed form while its inverse transform is implementation-specific and nonstandard. The measured comparisons expose trade-offs without asserting universal gains.
+\begin{thebibliography}{9}
+\bibitem{pearson1901} K. Pearson, ``On lines and planes of closest fit to systems of points in space,'' \emph{Philosophical Magazine}, vol. 2, no. 11, pp. 559--572, 1901.
+\bibitem{jolliffe2002} I. T. Jolliffe, \emph{Principal Component Analysis}, 2nd ed. New York, NY, USA: Springer, 2002.
+\bibitem{huber1981} P. J. Huber, \emph{Robust Statistics}. New York, NY, USA: Wiley, 1981.
+\bibitem{tippingbishop1999} M. E. Tipping and C. M. Bishop, ``Probabilistic principal component analysis,'' \emph{Journal of the Royal Statistical Society: Series B}, vol. 61, no. 3, pp. 611--622, 1999.
+\bibitem{pedregosa2011} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{Journal of Machine Learning Research}, vol. 12, pp. 2825--2830, 2011.
+\bibitem{software} J. Monchwe \emph{et al.}, ``ReliableML: Reliability-oriented machine learning,'' software repository, \url{https://github.com/Jabualani/ML-Reliabilty}, accessed Oct. 2026.
+\end{thebibliography}
+\end{document}

@@ -1,0 +1,868 @@
+{
+  "sample_count": 228,
+  "similarity_score": 0.8502647341451852,
+  "mean_psi": 0.16220752605334884,
+  "drift_threshold": 0.2,
+  "chi_square_alpha": 0.05,
+  "confidence_level": 0.95,
+  "bootstrap_samples": 200,
+  "confidence_intervals": {
+    "similarity_score": [
+      0.8218114782316173,
+      1.0
+    ],
+    "mean_psi": [
+      0.0,
+      0.19512368126100738
+    ]
+  },
+  "evaluation": {
+    "sample_count": 228,
+    "classification": {
+      "labels": [
+        "0",
+        "1"
+      ],
+      "confusion_matrix": [
+        [
+          73,
+          12
+        ],
+        [
+          14,
+          129
+        ]
+      ],
+      "accuracy": 0.8859649122807017,
+      "balanced_accuracy": 0.8804607157548334,
+      "matthews_correlation_coefficient": 0.7574397889161125,
+      "macro_average": {
+        "precision": 0.8769870383956957,
+        "recall": 0.8804607157548334,
+        "specificity": 0.8804607157548334,
+        "f1": 0.8786439567638388
+      },
+      "weighted_average": {
+        "precision": 0.8866299399758873,
+        "recall": 0.8859649122807017,
+        "specificity": 0.8749565192289649,
+        "f1": 0.8862263749777324
+      },
+      "per_class": [
+        {
+          "label": "0",
+          "support": 85,
+          "precision": 0.8390804597701149,
+          "recall": 0.8588235294117647,
+          "specificity": 0.9020979020979021,
+          "f1": 0.8488372093023254
+        },
+        {
+          "label": "1",
+          "support": 143,
+          "precision": 0.9148936170212766,
+          "recall": 0.9020979020979021,
+          "specificity": 0.8588235294117647,
+          "f1": 0.9084507042253521
+        }
+      ],
+      "probability_calibration": {
+        "status": "ok",
+        "mean_classwise_brier_score": 0.07576042390274083,
+        "log_loss": 0.23897362306266517,
+        "top_label_expected_calibration_error": 0.02345320755714261,
+        "confidence_bins": [
+          {
+            "lower_bound": 0.5,
+            "upper_bound": 0.6,
+            "sample_count": 14,
+            "mean_confidence": 0.5486101524290825,
+            "accuracy": 0.42857142857142855
+          },
+          {
+            "lower_bound": 0.6,
+            "upper_bound": 0.7,
+            "sample_count": 11,
+            "mean_confidence": 0.6469432004271974,
+            "accuracy": 0.6363636363636364
+          },
+          {
+            "lower_bound": 0.7,
+            "upper_bound": 0.8,
+            "sample_count": 10,
+            "mean_confidence": 0.7615289793003475,
+            "accuracy": 0.7
+          },
+          {
+            "lower_bound": 0.8,
+            "upper_bound": 0.9,
+            "sample_count": 27,
+            "mean_confidence": 0.8486532889989644,
+            "accuracy": 0.7777777777777778
+          },
+          {
+            "lower_bound": 0.9,
+            "upper_bound": 1.0,
+            "sample_count": 166,
+            "mean_confidence": 0.9760330445081125,
+            "accuracy": 0.9698795180722891
+          }
+        ],
+        "interpretation": "Lower scores indicate better probability calibration on this labeled evaluation batch. The expected calibration error uses equal-width bins and top-label confidence; results depend on the evaluation sample and bin count."
+      }
+    },
+    "statistical_tests": {
+      "feature_target_associations": {
+        "anova_numeric_features": [
+          {
+            "feature": "mean radius",
+            "statistic": 242.0999716384556,
+            "p_value": 1.3545874633089165e-37,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 226,
+            "sample_count": 228,
+            "excluded_count": 0,
+            "group_sizes": [
+              85,
+              143
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean texture",
+            "statistic": 85.90826289522603,
+            "p_value": 1.5443375584560106e-17,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 226,
+            "sample_count": 228,
+            "excluded_count": 0,
+            "group_sizes": [
+              85,
+              143
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean perimeter",
+            "statistic": 263.07414889443083,
+            "p_value": 9.383048355322852e-40,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 226,
+            "sample_count": 228,
+            "excluded_count": 0,
+            "group_sizes": [
+              85,
+              143
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean area",
+            "statistic": 237.6486538157034,
+            "p_value": 4.005303298026813e-37,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 226,
+            "sample_count": 228,
+            "excluded_count": 0,
+            "group_sizes": [
+              85,
+              143
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean smoothness",
+            "statistic": 19.181175207092064,
+            "p_value": 1.8189003105490235e-05,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 226,
+            "sample_count": 228,
+            "excluded_count": 0,
+            "group_sizes": [
+              85,
+              143
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          }
+        ],
+        "manova_numeric_features": {
+          "dependent_features": [
+            "mean radius",
+            "mean texture",
+            "mean perimeter",
+            "mean area",
+            "mean smoothness"
+          ],
+          "group": "target_class",
+          "group_count": 2,
+          "sample_count": 228,
+          "wilks_lambda": 0.36863313716255885,
+          "f_statistic": 76.04495061338072,
+          "p_value": 3.527200271682469e-46,
+          "numerator_df": 5.0,
+          "denominator_df": 222.0,
+          "assumptions_not_tested": [
+            "Observations are independent.",
+            "Multivariate residuals are approximately normal within groups.",
+            "Group covariance matrices are approximately equal."
+          ],
+          "status": "ok"
+        },
+        "chi_square_categorical_features": [],
+        "interpretation": "Tests whether numeric feature means or categorical feature frequencies differ across observed target classes."
+      },
+      "training_vs_test_cohorts": {
+        "anova_numeric_features": [
+          {
+            "feature": "mean radius",
+            "statistic": 0.01562383498128476,
+            "p_value": 0.900571542769027,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 567,
+            "sample_count": 569,
+            "excluded_count": 0,
+            "group_sizes": [
+              341,
+              228
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean texture",
+            "statistic": 0.23367525316762328,
+            "p_value": 0.6289985879900952,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 567,
+            "sample_count": 569,
+            "excluded_count": 0,
+            "group_sizes": [
+              341,
+              228
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean perimeter",
+            "statistic": 0.014890570092861481,
+            "p_value": 0.90292093122587,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 567,
+            "sample_count": 569,
+            "excluded_count": 0,
+            "group_sizes": [
+              341,
+              228
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean area",
+            "statistic": 0.01583616041246073,
+            "p_value": 0.8999017552356167,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 567,
+            "sample_count": 569,
+            "excluded_count": 0,
+            "group_sizes": [
+              341,
+              228
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          },
+          {
+            "feature": "mean smoothness",
+            "statistic": 0.20559822219637497,
+            "p_value": 0.6504130493494987,
+            "degrees_of_freedom_between": 1,
+            "degrees_of_freedom_within": 567,
+            "sample_count": 569,
+            "excluded_count": 0,
+            "group_sizes": [
+              341,
+              228
+            ],
+            "assumptions_not_tested": [
+              "Observations are independent.",
+              "Residuals are approximately normal within each group.",
+              "Group variances are approximately equal."
+            ],
+            "status": "ok"
+          }
+        ],
+        "manova_numeric_features": {
+          "dependent_features": [
+            "mean radius",
+            "mean texture",
+            "mean perimeter",
+            "mean area",
+            "mean smoothness"
+          ],
+          "group": "cohort",
+          "group_count": 2,
+          "sample_count": 569,
+          "wilks_lambda": 0.9946750648898608,
+          "f_statistic": 0.6027975512466137,
+          "p_value": 0.697835689386905,
+          "numerator_df": 5.0,
+          "denominator_df": 563.0,
+          "assumptions_not_tested": [
+            "Observations are independent.",
+            "Multivariate residuals are approximately normal within groups.",
+            "Group covariance matrices are approximately equal."
+          ],
+          "status": "ok"
+        },
+        "chi_square_categorical_features": [],
+        "interpretation": "Tests train-versus-test cohort differences; it complements the per-feature drift statistics and does not measure performance."
+      }
+    },
+    "bias_variance": {
+      "status": "ok",
+      "method": "repeated_stratified_cv_brier_decomposition",
+      "folds": 3,
+      "repeats": 1,
+      "estimator_fits": 3,
+      "bias_squared": 0.16635575436660976,
+      "prediction_variance": 0.0,
+      "mean_squared_probability_error": 0.16635575436660976,
+      "interpretation": "Empirical one-hot/Brier error decomposition from out-of-fold predictions; not a population irreducible-noise decomposition.",
+      "probabilities": "Estimator predict_proba is used when available; otherwise hard predictions are one-hot encoded."
+    },
+    "fairness": {
+      "size": {
+        "status": "ok",
+        "method": "binary",
+        "classes": {
+          "1": {
+            "positive_label": "1",
+            "per_group": [
+              {
+                "group": "large",
+                "sample_count": 114,
+                "actual_positive_count": 39,
+                "actual_negative_count": 75,
+                "predicted_positive_count": 29,
+                "selection_rate": 0.2543859649122807,
+                "true_positive_rate": 0.6410256410256411,
+                "false_positive_rate": 0.05333333333333334,
+                "positive_predictive_value": 0.8620689655172413
+              },
+              {
+                "group": "small",
+                "sample_count": 114,
+                "actual_positive_count": 104,
+                "actual_negative_count": 10,
+                "predicted_positive_count": 112,
+                "selection_rate": 0.9824561403508771,
+                "true_positive_rate": 1.0,
+                "false_positive_rate": 0.8,
+                "positive_predictive_value": 0.9285714285714286
+              }
+            ],
+            "statistical_parity": {
+              "gap": 0.7280701754385964,
+              "confidence_interval": [
+                0.6491228070175439,
+                0.8245614035087718
+              ],
+              "status": "ok"
+            },
+            "equalized_odds": {
+              "true_positive_rate_gap": {
+                "gap": 0.3589743589743589,
+                "confidence_interval": [
+                  0.21621621621621623,
+                  0.5003378378378379
+                ],
+                "status": "ok"
+              },
+              "false_positive_rate_gap": {
+                "gap": 0.7466666666666667,
+                "confidence_interval": [
+                  0.4262789089994973,
+                  0.9743670886075949
+                ],
+                "status": "ok"
+              },
+              "maximum_gap": 0.7466666666666667,
+              "maximum_gap_confidence_interval": [
+                0.47098838391540854,
+                0.972972972972973
+              ],
+              "status": "ok"
+            },
+            "predictive_parity": {
+              "gap": 0.06650246305418728,
+              "confidence_interval": [
+                0.00367707309078993,
+                0.1967983640114323
+              ],
+              "status": "ok"
+            },
+            "interpretation": "Gaps are max-minus-min across the supplied groups; zero indicates equal observed rates. Confidence intervals use within-group row bootstrap."
+          }
+        }
+      }
+    },
+    "limitations": [
+      "Performance metrics require true labels for the evaluated batch.",
+      "Statistical test p-values are assumption-dependent and are not evidence of causal effects.",
+      "Bias/variance values are empirical repeated-CV Brier-error decomposition, not population-level irreducible-noise estimates."
+    ]
+  },
+  "covariate_shift_detected": true,
+  "drifted_features": [],
+  "features": [
+    {
+      "name": "mean radius",
+      "ks_statistic": 0.10177753768585687,
+      "kl_divergence": 0.0804397637684859,
+      "psi": 0.19946690268494835,
+      "wasserstein_distance": 0.36445302773061666,
+      "dsi": 0.8970382811431266,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.2933876637843419
+        ],
+        "kl_divergence": [
+          0.0,
+          0.11505183407272014
+        ],
+        "ks_statistic": [
+          0.02485594484745579,
+          0.13508900550496475
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.4110102623218599
+        ],
+        "dsi": [
+          0.0,
+          1.5918887337869085
+        ]
+      },
+      "drifted": false
+    },
+    {
+      "name": "mean texture",
+      "ks_statistic": 0.0836548850131193,
+      "kl_divergence": 0.03197462735668299,
+      "psi": 0.06176632792301658,
+      "wasserstein_distance": 0.3942874414775943,
+      "dsi": 1.1750683090911251,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": true,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.07146687185124537
+        ],
+        "kl_divergence": [
+          0.0,
+          0.03776549940705382
+        ],
+        "ks_statistic": [
+          0.0,
+          0.10672268096928528
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.4360547409579666
+        ],
+        "dsi": [
+          0.0,
+          2.134748242465676
+        ]
+      },
+      "drifted": false
+    },
+    {
+      "name": "mean perimeter",
+      "ks_statistic": 0.1047615372742707,
+      "kl_divergence": 0.07346421929389273,
+      "psi": 0.18938665464350465,
+      "wasserstein_distance": 2.5622882903740294,
+      "dsi": 0.9088453564562727,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": false,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.27763460886375
+        ],
+        "kl_divergence": [
+          0.0,
+          0.10459344891466965
+        ],
+        "ks_statistic": [
+          0.02869398569738127,
+          0.13857333950712555
+        ],
+        "wasserstein_distance": [
+          0.0,
+          2.9675644839738675
+        ],
+        "dsi": [
+          0.0,
+          1.6192096745399056
+        ]
+      },
+      "drifted": false
+    },
+    {
+      "name": "mean area",
+      "ks_statistic": 0.09887071050059165,
+      "kl_divergence": 0.06831529418195102,
+      "psi": 0.17844359098776838,
+      "wasserstein_distance": 34.60475639244737,
+      "dsi": 3.1328169799397325,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": true,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.25115023600353664
+        ],
+        "kl_divergence": [
+          0.0,
+          0.0926301781527819
+        ],
+        "ks_statistic": [
+          0.02053525492617167,
+          0.12986475536348202
+        ],
+        "wasserstein_distance": [
+          0.0,
+          40.49652373694496
+        ],
+        "dsi": [
+          0.4036345895658737,
+          5.985908940481448
+        ]
+      },
+      "drifted": false
+    },
+    {
+      "name": "mean smoothness",
+      "ks_statistic": 0.06355147399290015,
+      "kl_divergence": 0.03419550332562389,
+      "psi": 0.18197415402750633,
+      "wasserstein_distance": 0.0012145601173020532,
+      "dsi": 1.824239623528335,
+      "chi_square_statistic": null,
+      "chi_square_p_value": null,
+      "chi_square_drifted": null,
+      "dsi_drifted": true,
+      "confidence_intervals": {
+        "psi": [
+          0.0,
+          0.2726531439090056
+        ],
+        "kl_divergence": [
+          0.0,
+          0.04213658953876803
+        ],
+        "ks_statistic": [
+          0.0,
+          0.07338291660235635
+        ],
+        "wasserstein_distance": [
+          0.0,
+          0.0013082792837114782
+        ],
+        "dsi": [
+          0.0,
+          3.3745501997517113
+        ]
+      },
+      "drifted": false
+    }
+  ],
+  "predictions": [
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    1,
+    0,
+    0,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    1,
+    0,
+    0,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "output_type": "predictions_and_reliability_report"
+}

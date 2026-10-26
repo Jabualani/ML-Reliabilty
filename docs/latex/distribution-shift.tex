@@ -1,0 +1,83 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Reference-Based Feature-Distribution Monitoring for Classification Pipelines}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+}
+\hypersetup{pdfauthor={Jabulani Monchwe and Martin Chanza}}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Input-distribution monitoring supplies evidence about how a prediction batch differs from a training reference, even before outcomes are observed. This paper documents the reference-based statistics implemented by ReliableML: quantile-binned population stability index and reference-to-current Kullback--Leibler divergence; numeric empirical Kolmogorov--Smirnov and one-dimensional Wasserstein distances; a library-defined moment-drift score; and categorical chi-square homogeneity tests. We formalize the measurements, fit-time state, report interpretation, and assumptions. In particular, the aggregate similarity indicator is a descriptive transform of PSI, not calibrated model confidence or a probability of correct prediction. Marginal stability cannot rule out conditional or concept drift, and any claim about predictive performance requires labels.
+\end{abstract}
+
+\begin{IEEEkeywords}
+distribution shift, covariate drift, statistical monitoring, PSI, Wasserstein distance
+\end{IEEEkeywords}
+
+\section{Introduction}
+Predictors are often deployed under input distributions that differ from those represented during development. Concept-drift literature distinguishes data change from model error and discusses the need to adapt monitoring to time and context \cite{gama2014}. ReliableML's monitor operationalizes reference comparisons for tabular features and attaches the report to predictions. Its role is diagnostic: a shift alert should motivate investigation and, when possible, labeled evaluation; it cannot certify or refute prediction correctness on its own.
+
+\section{Reference and report construction}
+Given fit-time data \(X_{\mathrm{ref}}\), \code{DriftMonitor.fit} records the feature names, reference observations, numeric quantile edges or categorical levels, and reference counts. A current batch \(X_{\mathrm{cur}}\) must follow the same schema and representation. Missing and unseen observations are represented in profile-specific bins/categories where supported. Numeric distribution measures use finite numeric observations.
+
+For a feature with \(B\) bins, let \(n_b^{(r)}\) and \(n_b^{(c)}\) be the reference and current counts. Smoothed, normalized proportions are denoted \(p_b\) and \(q_b\). The implementation's population stability index is
+\[
+\operatorname{PSI}(p,q)=\sum_{b=1}^{B}(q_b-p_b)\log(q_b/p_b),
+\]
+and its KL statistic is explicitly oriented from reference to current:
+\[
+D_{\mathrm{KL}}(p\Vert q)=\sum_{b=1}^{B}p_b\log(p_b/q_b).
+\]
+The implementation reports PSI-based drift flags against a configurable threshold; thresholds must be selected and checked with domain-relevant historical and shifted data rather than treated as universal cutoffs \cite{software}.
+
+\subsection{Numeric features}
+The two-sample empirical KS distance is \cite{smirnov1948}
+\[
+D_{n,m}=\sup_x|\widehat F_{\mathrm{ref}}(x)-\widehat F_{\mathrm{cur}}(x)|.
+\]
+The one-dimensional empirical Wasserstein-1 distance is the integral of the absolute difference between empirical CDFs \cite{arjovsky2017},
+\[
+W_1(\widehat P,\widehat Q)=\int_{\mathbb R}|\widehat F_{\mathrm{ref}}(x)-\widehat F_{\mathrm{cur}}(x)|\,dx.
+\]
+Both require usable finite numeric observations in each sample. The library-defined Drift Score Index combines normalized changes in mean and standard deviation with changes in skewness and excess kurtosis:
+\[
+\begin{aligned}
+\operatorname{DSI}^2={}&
+\left(\frac{\mu_c-\mu_r}{s}\right)^2
++\left(\frac{\sigma_c-\sigma_r}{s}\right)^2\\
+&+(\gamma_c-\gamma_r)^2+(\kappa_c-\kappa_r)^2,\\
+s={}&\max\{\sigma_r,10^{-12}\max(1,|\mu_r|)\}.
+\end{aligned}
+\]
+Here \(\gamma\) is skewness and \(\kappa\) is excess kurtosis. This is a descriptive composite defined by the implementation, not a conventional hypothesis test or standardized effect size.
+
+\subsection{Categorical features and uncertainty}
+Categorical comparisons use a Pearson chi-square homogeneity statistic over the profiled and unseen categories. Its asymptotic p-value can be unreliable when expected counts are small; the report exposes this issue. Bootstrap intervals are generated for supported drift statistics, using the implementation's row resampling. They do not account automatically for clustered, repeated-measure, or temporally dependent observations. The aggregate indicator is
+\[
+S_{\mathrm{display}}=\exp(-\overline{\operatorname{PSI}}),
+\]
+where the average is over monitored features. This monotone score is not a posterior probability, model confidence, or estimate of accuracy.
+
+\section{Covariate shift versus predictive validity}
+The monitor's inference-time report compares feature marginals and may flag covariate shift. Even identical feature marginals can conceal changes in \(P(Y\mid X)\); marginal changes can also leave a decision rule's performance intact. The separate feature--target analysis requires labels and compares univariate feature--target associations between reference and incoming cohorts. It does not estimate a causal mechanism and can miss interactions. Predictive validity, calibration, and fairness require labeled, representative observations and are reported through other APIs.
+
+\section{Use in an evaluation protocol}
+Reference profiles must be fitted using training data only and retained with the final artifact. Define the deployment population and observation unit before setting thresholds. Track batch size, missingness, schema changes, reference age, and frequencies of flags. Evaluate sensitivity and false-alarm behavior on representative in-domain batches and designed shifts; report workload and latency. Investigate flagged features and check labeled performance when outcomes are observable. Do not automatically retrain or reject predictions solely from a single PSI or similarity value.
+
+\section{Limitations}
+The binned measures depend on bin construction and smoothing, may lose within-bin information, and can be unstable for small current batches. Numeric moments can be sensitive to outliers. Marginal monitoring does not detect every multivariate shift. Statistical significance is sample-size dependent and does not measure practical harm. Distribution similarity does not imply stable conditional risk, calibration, fairness, or causal structure.
+
+\section{Conclusion}
+ReliableML retains a fit-time reference and produces feature-level comparisons that can accompany unlabeled predictions. The statistics answer a limited but useful question: how do current feature distributions differ under the chosen representations? Reliable interpretation requires prespecified thresholds, labeled follow-up, and explicit separation from model correctness or confidence.
+
+\begin{thebibliography}{9}
+\bibitem{gama2014} J. Gama, I. Zliobaite, A. Bifet, M. Pechenizkiy, and A. Bouchachia, ``A survey on concept drift adaptation,'' \emph{ACM Computing Surveys}, vol. 46, no. 4, 2014.
+\bibitem{smirnov1948} N. V. Smirnov, ``Table for estimating the goodness of fit of empirical distributions,'' \emph{Annals of Mathematical Statistics}, vol. 19, no. 2, pp. 279--281, 1948.
+\bibitem{arjovsky2017} M. Arjovsky, S. Chintala, and L. Bottou, ``Wasserstein generative adversarial networks,'' in \emph{Proc. 34th Int. Conf. Machine Learning}, 2017, pp. 214--223.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

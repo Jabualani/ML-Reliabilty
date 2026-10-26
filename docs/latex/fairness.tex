@@ -1,0 +1,65 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{Group-Rate Fairness Assessment for Labeled Classification Outcomes}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Fairness assessment is a choice of estimand, population, and decision context rather than a universal pass/fail property. This paper documents ReliableML's group-rate summaries: selection-rate differences (statistical parity), true- and false-positive-rate differences (equalized odds), and positive-predictive-value differences (predictive parity). We define the group-specific quantities, max-minus-min gaps, row-bootstrap intervals, denominators, and input requirements. The results are descriptive estimates on supplied labeled data; they do not establish legal compliance, absence of harm, or an acceptable threshold. Different fairness criteria may conflict, especially when outcome base rates differ.
+\end{abstract}
+
+\begin{IEEEkeywords}
+algorithmic fairness, statistical parity, equalized odds, predictive parity, subgroup evaluation
+\end{IEEEkeywords}
+
+\section{Introduction}
+Reliability assessment should examine who benefits and who bears errors, not only average accuracy. Statistical definitions of group fairness encode different properties and are not interchangeable \cite{hardt2016,dwork2012,chouldechova2017}. ReliableML implements several rate comparisons \cite{software} but does not choose protected attributes, determine legal categories, set acceptable disparities, or make normative decisions. Those choices require domain governance and stakeholder input.
+
+\section{Inputs and population}
+For each row, the procedure requires a true label \(Y\), predicted label \(\widehat Y\), and one or more protected-group values \(A\). Inputs must be aligned to the same evaluation rows. A binary task requires a specified positive label; multiclass evaluation uses one-vs-rest rates per class. Protected attributes are supplied separately to the evaluation call; this separation is an API boundary, not a guarantee that the estimator was trained without them.
+
+\section{Estimands}
+For group \(a\) and positive class \(1\), selection rate, true-positive rate, false-positive rate, and positive predictive value are
+\[
+\begin{aligned}
+s_a&=P(\widehat Y=1\mid A=a),\\
+t_a&=P(\widehat Y=1\mid Y=1,A=a),\\
+f_a&=P(\widehat Y=1\mid Y=0,A=a),\\
+v_a&=P(Y=1\mid\widehat Y=1,A=a).
+\end{aligned}
+\]
+The empirical estimates replace each probability by a ratio of the corresponding counts. ReliableML reports each group rate and its denominator: group size, number of actual positives, actual negatives, and predicted positives. If a denominator is zero, the corresponding rate is unavailable rather than evidence of a zero rate.
+
+For rate \(r_a\) across the supplied groups \(\mathcal A\), the max-minus-min disparity is
+\[
+\Delta_r=\max_{a\in\mathcal A}r_a-\min_{a\in\mathcal A}r_a.
+\]
+The selection-rate gap operationalizes statistical parity. Reporting both \(\Delta_t\) and \(\Delta_f\) captures the two components of equalized odds \cite{hardt2016}. The PPV gap operationalizes predictive parity. A zero observed gap indicates equality of the measured rates in this sample under these definitions, not equality of individual treatment or outcomes.
+
+\section{Uncertainty and implementation}
+The implementation bootstraps rows within each supplied group and recalculates group rates and gaps to form percentile intervals. This conditions on the observed grouping and assumes independent rows under the resampling scheme. It may be inappropriate for clustered entities, repeated observations, or temporal data; a cluster or block bootstrap may be needed. Small denominators, rare outcomes, missing groups, and data-dependent subgroup construction can make intervals unstable. Inspect both point estimates and denominators rather than ranking groups by a gap alone.
+
+\section{Interpretation and study protocol}
+There is no universally correct criterion. Under differing base rates and imperfect prediction, calibration/predictive parity and equalized error criteria may be incompatible \cite{chouldechova2017}. Selection rates can differ for reasons that are either harmful or justified by context; equal observed rates do not by themselves prove fairness. Conversely, a small aggregate gap can conceal intersectional disparities. Prespecify groups, positive outcomes, population, decision threshold, minimum sample policy, and acceptable tradeoffs. Examine error harms, label quality, measurement, historical context, and legal obligations with domain experts.
+
+For research comparisons, compute rates on an untouched labeled evaluation sample and report uncertainty, all group denominators, subgroup composition, and threshold selection. If thresholds were tuned using these data, use separate data for threshold choice and final disparity estimation. Monitor repeated periods with consistent label definitions and sampling.
+
+\section{Conclusion}
+ReliableML provides a compact set of group-rate diagnostics and bootstrap intervals, not a fairness certificate. Their value depends on explicit estimands, valid data, sufficient group support, and transparent normative decisions. Statistical evidence should inform rather than replace substantive review.
+
+\begin{thebibliography}{9}
+\bibitem{dwork2012} C. Dwork, M. Hardt, T. Pitassi, O. Reingold, and R. Zemel, ``Fairness through awareness,'' in \emph{Proc. 3rd Innovations in Theoretical Computer Science Conf.}, 2012, pp. 214--226.
+\bibitem{hardt2016} M. Hardt, E. Price, and N. Srebro, ``Equality of opportunity in supervised learning,'' in \emph{Advances in Neural Information Processing Systems}, 2016.
+\bibitem{chouldechova2017} A. Chouldechova, ``Fair prediction with disparate impact: A study of bias in recidivism prediction instruments,'' \emph{Big Data}, vol. 5, no. 2, pp. 153--163, 2017.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

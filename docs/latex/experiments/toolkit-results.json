@@ -1,0 +1,440 @@
+{
+  "power": {
+    "signal": {
+      "ridge_cv": 0.9561852770027366,
+      "knn_cv": 0.8494723672538549,
+      "in_sample": 0.9570522428416922,
+      "gap": 0.0008669658389556245,
+      "verdict": "explains and predicts consistently: the relationship is simple and stable",
+      "min_detectable_f2": 0.02594392032068584,
+      "required_n_medium": 92
+    },
+    "pure_noise": {
+      "ridge_cv": -0.020724485231172318,
+      "knn_cv": -0.12450468476630294,
+      "in_sample": 0.006990496321101269,
+      "gap": 0.027714981552273588,
+      "verdict": "weak on both: the features neither explain nor predict this target",
+      "min_detectable_f2": 0.02594392032068584,
+      "required_n_medium": 92
+    },
+    "overfit_n60_p30": {
+      "ridge_cv": -1.3170531121746771,
+      "knn_cv": -0.3078763760523422,
+      "in_sample": 0.42101240733800216,
+      "gap": 1.7380655195126793,
+      "verdict": "explains but does not predict: in-sample structure that does not generalise (overfitting risk)",
+      "min_detectable_f2": 0.35592955270144816,
+      "required_n_medium": 127
+    }
+  },
+  "seconds": {
+    "power_signal": 0.02,
+    "power_pure_noise": 0.02,
+    "power_overfit_n60_p30": 0.03,
+    "time_series": 0.02,
+    "al_rings_nonlinear_logistic": 3.13,
+    "al_rings_nonlinear_knn": 2.84,
+    "al_rings_nonlinear_lda": 1.39,
+    "al_imbalanced_linear_logistic": 4.36,
+    "al_imbalanced_linear_knn": 3.34,
+    "al_imbalanced_linear_lda": 1.29
+  },
+  "ab_test": {
+    "reps": 200,
+    "false_positive_rate_alpha_0.05": 0.055,
+    "power_10pct_to_14pct_n1000_per_arm": 0.795
+  },
+  "root_cause": {
+    "reps": 20,
+    "planted_segment_ranked_first": 1.0
+  },
+  "time_series": {
+    "trend_p": 4.0630324976403515e-84,
+    "sen_slope_true_0.03": 0.040946201682475,
+    "period_true_7": 7,
+    "seasonal_strength": 0.9335803110344781,
+    "change_point_index_true_220": 217,
+    "stationary": false
+  },
+  "construction": {
+    "planted_ratio": {
+      "mean_holdout_gain": 0.14110062896095799,
+      "runs_with_any_feature": 8,
+      "example_recipes": [
+        "log1p(price)",
+        "log1p(area)"
+      ]
+    },
+    "planted_step_heavy_tail": {
+      "mean_holdout_gain": 0.39886129705491435,
+      "runs_with_any_feature": 8,
+      "example_recipes": [
+        "signedlog(b)",
+        "signedlog(b)*b",
+        "signedlog(b)-b"
+      ]
+    },
+    "noise": {
+      "mean_holdout_gain": -0.0009150434094051252,
+      "runs_with_any_feature": 2,
+      "example_recipes": []
+    }
+  },
+  "active_learning": {
+    "rings_nonlinear/logistic": {
+      "ceiling": 0.742,
+      "ranking": [
+        "least_confidence",
+        "margin",
+        "entropy",
+        "diversity_static",
+        "kcenter",
+        "random",
+        "coverage_margin",
+        "density_margin",
+        "committee"
+      ],
+      "alc": {
+        "random": 0.7082,
+        "least_confidence": 0.7177,
+        "margin": 0.7177,
+        "entropy": 0.7177,
+        "committee": 0.6923,
+        "kcenter": 0.7136,
+        "density_margin": 0.7019,
+        "coverage_margin": 0.7041,
+        "diversity_static": 0.7164
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.0094,
+          0.0245
+        ],
+        "margin": [
+          0.0094,
+          0.0245
+        ],
+        "entropy": [
+          0.0094,
+          0.0245
+        ],
+        "committee": [
+          -0.0159,
+          0.0254
+        ],
+        "kcenter": [
+          0.0053,
+          0.0292
+        ],
+        "density_margin": [
+          -0.0063,
+          0.0247
+        ],
+        "coverage_margin": [
+          -0.0041,
+          0.0248
+        ],
+        "diversity_static": [
+          0.0082,
+          0.0176
+        ]
+      }
+    },
+    "rings_nonlinear/knn": {
+      "ceiling": 0.8390000000000001,
+      "ranking": [
+        "diversity_static",
+        "coverage_margin",
+        "margin",
+        "kcenter",
+        "least_confidence",
+        "committee",
+        "entropy",
+        "random",
+        "density_margin"
+      ],
+      "alc": {
+        "random": 0.6888,
+        "least_confidence": 0.698,
+        "margin": 0.7117,
+        "entropy": 0.6891,
+        "committee": 0.6897,
+        "kcenter": 0.7042,
+        "density_margin": 0.6537,
+        "coverage_margin": 0.712,
+        "diversity_static": 0.7171
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.0092,
+          0.0246
+        ],
+        "margin": [
+          0.0229,
+          0.0138
+        ],
+        "entropy": [
+          0.0003,
+          0.033
+        ],
+        "committee": [
+          0.0009,
+          0.0125
+        ],
+        "kcenter": [
+          0.0154,
+          0.0119
+        ],
+        "density_margin": [
+          -0.0351,
+          0.0158
+        ],
+        "coverage_margin": [
+          0.0232,
+          0.0084
+        ],
+        "diversity_static": [
+          0.0283,
+          0.0203
+        ]
+      }
+    },
+    "rings_nonlinear/lda": {
+      "ceiling": 0.7389999999999999,
+      "ranking": [
+        "committee",
+        "coverage_margin",
+        "least_confidence",
+        "margin",
+        "entropy",
+        "density_margin",
+        "diversity_static",
+        "random",
+        "kcenter"
+      ],
+      "alc": {
+        "random": 0.7063,
+        "least_confidence": 0.7094,
+        "margin": 0.7094,
+        "entropy": 0.7094,
+        "committee": 0.7159,
+        "kcenter": 0.7028,
+        "density_margin": 0.7083,
+        "coverage_margin": 0.7152,
+        "diversity_static": 0.708
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.0031,
+          0.0236
+        ],
+        "margin": [
+          0.0031,
+          0.0236
+        ],
+        "entropy": [
+          0.0031,
+          0.0236
+        ],
+        "committee": [
+          0.0096,
+          0.015
+        ],
+        "kcenter": [
+          -0.0036,
+          0.0303
+        ],
+        "density_margin": [
+          0.002,
+          0.0215
+        ],
+        "coverage_margin": [
+          0.0089,
+          0.0225
+        ],
+        "diversity_static": [
+          0.0017,
+          0.0176
+        ]
+      }
+    },
+    "imbalanced_linear/logistic": {
+      "ceiling": 0.6778919631093544,
+      "ranking": [
+        "diversity_static",
+        "coverage_margin",
+        "density_margin",
+        "least_confidence",
+        "margin",
+        "entropy",
+        "committee",
+        "random",
+        "kcenter"
+      ],
+      "alc": {
+        "random": 0.6849,
+        "least_confidence": 0.6979,
+        "margin": 0.6979,
+        "entropy": 0.6979,
+        "committee": 0.6897,
+        "kcenter": 0.6768,
+        "density_margin": 0.7063,
+        "coverage_margin": 0.7098,
+        "diversity_static": 0.7203
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.0131,
+          0.0449
+        ],
+        "margin": [
+          0.0131,
+          0.0449
+        ],
+        "entropy": [
+          0.0131,
+          0.0449
+        ],
+        "committee": [
+          0.0048,
+          0.0183
+        ],
+        "kcenter": [
+          -0.0081,
+          0.062
+        ],
+        "density_margin": [
+          0.0214,
+          0.0532
+        ],
+        "coverage_margin": [
+          0.025,
+          0.0516
+        ],
+        "diversity_static": [
+          0.0354,
+          0.076
+        ]
+      }
+    },
+    "imbalanced_linear/knn": {
+      "ceiling": 0.4805270092226614,
+      "ranking": [
+        "coverage_margin",
+        "diversity_static",
+        "committee",
+        "least_confidence",
+        "entropy",
+        "kcenter",
+        "margin",
+        "density_margin",
+        "random"
+      ],
+      "alc": {
+        "random": 0.2611,
+        "least_confidence": 0.4241,
+        "margin": 0.3836,
+        "entropy": 0.3971,
+        "committee": 0.4273,
+        "kcenter": 0.3865,
+        "density_margin": 0.3035,
+        "coverage_margin": 0.4795,
+        "diversity_static": 0.4782
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.163,
+          0.0991
+        ],
+        "margin": [
+          0.1225,
+          0.1312
+        ],
+        "entropy": [
+          0.136,
+          0.1214
+        ],
+        "committee": [
+          0.1662,
+          0.0711
+        ],
+        "kcenter": [
+          0.1254,
+          0.0917
+        ],
+        "density_margin": [
+          0.0424,
+          0.1101
+        ],
+        "coverage_margin": [
+          0.2184,
+          0.0647
+        ],
+        "diversity_static": [
+          0.2171,
+          0.0798
+        ]
+      }
+    },
+    "imbalanced_linear/lda": {
+      "ceiling": 0.6614492753623189,
+      "ranking": [
+        "diversity_static",
+        "kcenter",
+        "least_confidence",
+        "margin",
+        "entropy",
+        "density_margin",
+        "coverage_margin",
+        "committee",
+        "random"
+      ],
+      "alc": {
+        "random": 0.6796,
+        "least_confidence": 0.7234,
+        "margin": 0.7234,
+        "entropy": 0.7234,
+        "committee": 0.7075,
+        "kcenter": 0.7402,
+        "density_margin": 0.7233,
+        "coverage_margin": 0.7177,
+        "diversity_static": 0.7707
+      },
+      "gain_vs_random": {
+        "least_confidence": [
+          0.0438,
+          0.0805
+        ],
+        "margin": [
+          0.0438,
+          0.0805
+        ],
+        "entropy": [
+          0.0438,
+          0.0805
+        ],
+        "committee": [
+          0.028,
+          0.0709
+        ],
+        "kcenter": [
+          0.0607,
+          0.0858
+        ],
+        "density_margin": [
+          0.0437,
+          0.0852
+        ],
+        "coverage_margin": [
+          0.0381,
+          0.0685
+        ],
+        "diversity_static": [
+          0.0912,
+          0.0749
+        ]
+      }
+    }
+  }
+}

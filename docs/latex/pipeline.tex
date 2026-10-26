@@ -1,0 +1,74 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{A Persisted Prediction Pipeline with Fit-Time References and Staged Reliability Reporting}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+ReliableML's \code{ReliablePipeline} pairs a fitted classifier with a fit-time feature-distribution reference, enabling predictions to be accompanied by unlabeled drift reports. This paper describes the pipeline lifecycle, artifact contents, and the staged availability of reliability analyses. At prediction time, reference comparisons do not require outcomes; evaluation and fairness do, while deterioration requires multiple dated labeled batches and reason auditing requires a labeled holdout. The pipeline preserves an estimator and monitor state but does not automatically clean arbitrary inputs or run every audit after every prediction. Operational safety depends on consistent preprocessing and schema, privacy-aware artifacts, trusted serialization, and follow-up with representative labeled data.
+\end{abstract}
+
+\begin{IEEEkeywords}
+reliable machine learning, prediction pipeline, model monitoring, persistence, deployment
+\end{IEEEkeywords}
+
+\section{Introduction}
+Reliable deployment is a lifecycle problem. A model's fit-time reference can support comparisons with new observations, but input similarity and predictive validity are different quantities \cite{gama2014}. This paper documents the ReliableML wrapper's implemented behavior and data requirements \cite{nist2023,software}, emphasizing where the intended operational workflow must pause for labels or other external evidence.
+
+\section{Fit-time lifecycle}
+Given estimator \(h\), training features \(X_{\mathrm{train}}\), and labels \(y_{\mathrm{train}}\), \code{ReliablePipeline.fit} fits a \code{DriftMonitor} on the reference features and then fits \(h\). The monitor retains feature profiles, reference observations, bins/categories, and summary statistics. When reliability monitoring is enabled (the default), the pipeline also saves a reference distribution plot. The monitor compares the input received by the wrapper; callers must ensure the same feature schema, order, units, and representation during training and inference.
+
+The \code{ReliablePipeline} does not import ATTP or execute general data cleaning. Users remain responsible for cleaning, domain-valid feature construction, resampling boundaries, model selection, and independent evaluation. Keep preprocessing inside the estimator's scikit-learn pipeline whenever it learns from data so that cross-validation fits transformations only on each training fold.
+
+\section{Prediction-time outputs}
+For new features \(X_{\mathrm{new}}\), \code{predict} first returns estimator predictions, then compares the batch with the fitted feature reference. The report includes feature-level drift statistics and an aggregate descriptive similarity indicator, and the pipeline writes a timestamped JSON report containing predictions and a plot. \code{predict\_with\_report} returns predictions and the latest reliability report together. This is an unlabeled workflow: it can assess feature-distribution change but cannot establish accuracy, calibration, fairness, or deterioration.
+
+\section{Labeled follow-up analyses}
+When outcomes are observed, \code{evaluate(X,y)} computes classification and statistical evaluation and can include group fairness when protected-group features are supplied. \code{assess\_deterioration} takes a history of dated labeled batches and evaluates an accuracy trend. \code{explain(X)} can explain unlabeled model outputs relative to a background reference. \code{audit\_reasons(X,y)} requires a labeled holdout and reference background and computes predictive-validity and reliance diagnostics. These analyses are separate API calls; they do not all run automatically at every prediction. Their different requirements are summarized below.
+
+\begin{table}[t]
+\caption{Information requirements for pipeline analyses}
+\label{tab:reqs}
+\centering
+\small
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{p{0.37\columnwidth}p{0.47\columnwidth}}
+\toprule
+Analysis & Data requirement\\
+\midrule
+Feature shift & Unlabeled batch and fitted reference\\
+Classification evaluation & Labeled representative batch\\
+Fairness & Labels, protected groups, positive class\\
+Deterioration & Three or more dated labeled batches\\
+Explanation & Background data and target class\\
+Reason audit & Labeled holdout and reference background\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Persistence, privacy, and operational safety}
+\code{save} serializes the fitted pipeline with Python pickle; \code{load} reconstructs it. A profile may retain training observations for reference plots and uncertainty calculations, so the artifact can contain sensitive data and requires access controls, retention policy, and privacy review. Pickle deserialization can execute arbitrary code: only load artifacts from trusted sources. Pin compatible dependencies and record the model, preprocessing, and training-data provenance. Validate schema, units, missing values, and feature order before prediction.
+
+If monitoring is disabled, prediction reports are not produced. A missing report should be treated as disabled or unavailable monitoring, not interpreted as evidence of no shift. Drift thresholds must be empirically reviewed; a low PSI or high similarity indicator is not a correctness probability. Maintain labeled outcome monitoring when feasible and establish human escalation procedures for consequential decisions.
+
+\section{Limitations}
+The wrapper does not perform automatic retraining, causal analysis, label acquisition, fairness threshold selection, or all reliability audits at prediction time. A single prediction batch may not support robust statistical inference. Input-distribution comparison is limited by the chosen features, bins, and reference age. Privacy and governance obligations are deployment-specific.
+
+\section{Conclusion}
+The pipeline's central function is to preserve a model and its fit-time feature reference and to report unlabeled distribution comparisons alongside predictions. Outcome-dependent analyses follow when suitable data become available. Keeping these stages explicit prevents users from treating similarity, explanation, or an empty report as proof of reliable predictions.
+
+\begin{thebibliography}{9}
+\bibitem{gama2014} J. Gama, I. Zliobaite, A. Bifet, M. Pechenizkiy, and A. Bouchachia, ``A survey on concept drift adaptation,'' \emph{ACM Computing Surveys}, vol. 46, no. 4, 2014.
+\bibitem{nist2023} National Institute of Standards and Technology, \emph{Artificial Intelligence Risk Management Framework (AI RMF 1.0)}, NIST AI 100-1, 2023.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

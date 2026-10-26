@@ -1,0 +1,131 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{A Statistical Workflow for Machine-Learning Reliability: Data Partitioning, Meta-Learning, and Post-Deployment Evidence}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Predictive accuracy measured on a single held-out sample is incomplete evidence for the reliability of a deployed classifier. This manuscript presents a three-stage statistical workflow that separates data preparation and partitioning, model construction, and continuing reliability analysis. The workflow pairs the user's ATTP partitioning package with ReliableML, a Python library that implements cross-fitted meta-learning estimators, reference-based input-distribution monitoring, labeled evaluation, group-rate summaries, temporal accuracy-trend analysis, model explanations, and a holdout reason audit. We formalize the implemented statistics, identify the assumptions and data required by each analysis, and distinguish deployment-time unlabeled diagnostics from analyses that must wait for observed outcomes. In particular, drift is not a correctness probability; fairness and predictive validity need labels; deterioration needs repeated dated labeled batches; and explanation alignment cannot establish causality. The current software is a methodological toolkit, not evidence that a particular model is reliable. The manuscript is a methods draft: reproducible multi-domain experiments and empirical results are necessary before submission as a validated performance claim.
+\end{abstract}
+
+\begin{IEEEkeywords}
+machine-learning reliability, distribution shift, data partitioning, stacking, fairness, calibration, explainability, statistical auditing
+\end{IEEEkeywords}
+
+\section{Introduction}
+Machine-learning models are commonly assessed with a finite sample drawn from a development dataset, although deployed predictions are made under changing populations, collection practices, and operational conditions. A favorable score on one split does not establish stable performance, calibrated probabilities, equitable error rates, or understandable failure modes. Distribution-shift research distinguishes changes in the input law from changes in the relationship between inputs and outcomes; either may invalidate assumptions behind a static evaluation \cite{gama2014}.
+
+This project defines reliability as a collection of observable, context-dependent properties rather than a single universal score. Its research rationale is that preprocessing, model selection, and monitoring are often treated as separate activities, while operational decisions require evidence from all three. The rationale is a research motivation, not a claim that the literature contains no existing monitoring, fairness, calibration, or explanation methods. The current ReliableML implementation is described in the public software distribution \cite{software}.
+
+\subsection{Problem statement and research gap}
+Current practice can produce a metric mismatch: the criterion used to select a model may not reflect class imbalance, probability quality, subgroup error, or future population shift. A random or stratified holdout can also be unrepresentative of a deployment domain, while a distribution comparison alone cannot say whether a model remains accurate. Reliability evidence must therefore identify the estimand, the data on which it is estimated, and the assumptions under which it is informative.
+
+The methodological gap addressed here is an integration and reporting problem: a single user-facing workflow should retain the training reference, return feature-shift evidence with predictions, and provide distinct labeled analyses when outcomes and group variables become available. This work does not claim that any component metric is new or that the integrated package has demonstrated superior performance.
+
+\subsection{Aim, objectives, and questions}
+The aim is to develop and document a statistical workflow for building and assessing classification systems across development and deployment. The objectives are: (1) prepare and partition data without contaminating final evaluation; (2) fit and compare conventional or meta-learning estimators using leakage-aware validation; (3) retain reference distributions with the fitted artifact; and (4) report distributional, predictive, subgroup, temporal, and explanatory evidence with explicit assumptions.
+
+The research questions are: What information does reference-based monitoring add to predictions when labels are unavailable? How do cross-fitted meta-learning estimators compare with selected base learners under a prespecified evaluation protocol? Which conclusions are supported by each labeled reliability diagnostic, and which require additional domain or causal assumptions?
+
+\section{Background and related work}
+Cross-validation and holdout procedures estimate predictive performance only relative to their sampling design and target population; their validity depends on independence, representativeness, and separation of model selection from final evaluation \cite{arlot2010,kohavi1995}. Stacked generalization learns a second-stage predictor from predictions of first-stage learners \cite{wolpert1992}. Cross-fitting makes training examples' meta-features out-of-fold, which is essential because in-sample base predictions can be optimistically fitted.
+
+Monitoring methods compare current and reference distributions, whereas calibration and classification metrics require observed outcomes. Fairness criteria formalize different group comparisons and can be mutually incompatible under differing base rates \cite{hardt2016,chouldechova2017}. SHAP and LIME explain model behavior using distinct approximations; neither supplies causal identification \cite{lundberg2017,ribeiro2016}. The cited methods are established foundations; ReliableML's contribution is their implementation and reporting within one Python workflow, not the invention of these statistical concepts.
+
+\section{Framework and methodological contributions}
+Let \(\mathcal{D}=\{(x_i,y_i)\}_{i=1}^{n}\) denote labeled development data and \(P_{\mathrm{ref}}\) the feature distribution represented at fit time. The intended sequence is:
+\begin{enumerate}
+\item Inspect, validate, clean, encode, and transform data using procedures fitted only on development training data. ATTP may be used as a partitioning component after data are made numeric and finite; it is not, in the currently inspected package, a general missing-value cleaning or categorical-encoding system.
+\item Keep the final evaluation data independent of preprocessing and model selection. Choose and validate estimators using only the development data; reserve representative data for the final evaluation.
+\item Within development data, fit candidate classifiers and meta-learners and select using a prespecified inner criterion. Fit \code{ReliablePipeline} on the selected training partition; it retains the estimator and feature-reference profiles. Ordinary use of \code{ReliablePipeline} remains independent of ATTP.
+\item At prediction time, apply the same fitted preprocessing and feature schema, load the fitted artifact, and generate predictions with feature-distribution diagnostics. When true labels arrive, run evaluation and fairness; assess deterioration over multiple dated labeled batches; run reason auditing on representative labeled holdout data. Explanations can be computed for unlabeled cases, but explanations are not a substitute for outcome validation.
+\end{enumerate}
+
+\subsection{Cross-fitted meta-learning}
+For \(K\) stratified folds and \(M\) base estimators, each training row \(i\) receives the class-aligned probability vector \(\hat p_{im}^{(-k(i))}\) from estimator \(m\) fitted without its fold. The meta-design is
+\[
+Z_i = [\hat p_{i1,1}^{(-k(i))},\ldots,\hat p_{i1,C}^{(-k(i))},\ldots,
+\hat p_{iM,1}^{(-k(i))},\ldots,\hat p_{iM,C}^{(-k(i))}].
+\]
+The final learner \(g\) is fitted to \((Z_i,y_i)\). At inference, base estimators refitted on the full training set produce \(Z(x)\), and \(\hat p(y\mid x)=g(Z(x))\). This construction follows stacked generalization \cite{wolpert1992}. \code{PerfMetaSelect} instead chooses the highest mean stratified-CV score among candidate estimators and refits that estimator. The statistical meta-classifiers derive LDA projections, cross-fitted LDA (and optional tree) probabilities, and K-means distance or radial features, then fit a logistic meta-model; those variants are currently binary-classification estimators. These algorithms are not evidence of improved generalization until tested against prespecified baselines.
+
+\subsection{Reference-based distribution monitoring}
+For each feature, the monitor fits reference bins or category levels and compares their reference proportions \(p_b\) with current proportions \(q_b\). With smoothing \(\epsilon>0\), proportions are normalized after adding \(\epsilon\) to each cell. The population stability index and reference-to-current KL divergence are
+\[
+\begin{aligned}
+\operatorname{PSI}(p,q)&=\sum_b(q_b-p_b)\log\frac{q_b}{p_b},\\
+D_{\mathrm{KL}}(p\Vert q)&=\sum_b p_b\log\frac{p_b}{q_b}.
+\end{aligned}
+\]
+Numeric features also receive an empirical Kolmogorov--Smirnov distance and one-dimensional Wasserstein distance; categorical features receive a chi-square homogeneity statistic. The library-defined Drift Score Index combines changes in standardized moments and is not a standard named inferential test. The aggregate similarity display is \(\exp(-\overline{\operatorname{PSI}})\), a descriptive transform, not a probability of correctness or calibrated confidence. The monitor captures feature distributions at fit time and compares them at prediction; this provides evidence about observed covariate change, not \(P(Y\mid X)\) or current accuracy.
+
+\subsection{Labeled predictive and statistical evaluation}
+For a multiclass confusion matrix \(C\), let \(t_k=\sum_j C_{kj}\), \(p_k=\sum_i C_{ik}\), \(c=\sum_k C_{kk}\), and \(s=\sum_{ij}C_{ij}\). The implemented multiclass Matthews correlation coefficient \cite{mcc} is
+\[
+\operatorname{MCC}=
+\operatorname{MCC}=
+\frac{cs-\sum_k t_kp_k}
+{\sqrt{(s^2-\sum_k p_k^2)(s^2-\sum_k t_k^2)}}.
+\]
+The report also returns classwise precision, recall, specificity, F1, macro and support-weighted summaries, and accuracy. For probability predictions \(p_i\) and one-hot target \(e_{y_i}\), the multiclass Brier score is \(n^{-1}\sum_i\|p_i-e_{y_i}\|_2^2\). Statistical reports use one-way ANOVA for numeric group-mean comparisons, MANOVA for joint numeric outcomes when the residual covariance is estimable, and Pearson chi-square tests for categorical association. These tests describe differences or associations; their distributional assumptions, small expected counts, multiple comparisons, and sample design affect interpretation. Repeated stratified cross-validation computes an empirical one-hot/Brier bias-squared, prediction-variance, and error decomposition; it is a finite-sample diagnostic rather than population irreducible noise.
+
+\subsection{Fairness estimands}
+Given protected group \(A=a\), true class \(Y\), and prediction \(\hat Y\), the library reports selection rate \(s_a=P(\hat Y=1\mid A=a)\), true-positive rate \(t_a=P(\hat Y=1\mid Y=1,A=a)\), false-positive rate \(f_a=P(\hat Y=1\mid Y=0,A=a)\), and positive predictive value \(v_a=P(Y=1\mid\hat Y=1,A=a)\). For each rate \(r_a\), the descriptive gap is \(\Delta_r=\max_a r_a-\min_a r_a\). These correspond to statistical parity, equalized-odds components, and predictive parity. They require aligned labels and protected-group values, include group denominators and row-bootstrap intervals, and do not decide which criterion or threshold is appropriate. The criteria can conflict \cite{chouldechova2017}.
+
+\subsection{Temporal deterioration}
+For dated labeled batches \(j=1,\ldots,J\), accuracy \(a_j\) is regressed on numeric time \(t_j\), with ordinary least-squares slope
+\[
+\hat\beta_1=\frac{\sum_j(t_j-\bar t)(a_j-\bar a)}
+{\sum_j(t_j-\bar t)^2}.
+\]
+The implementation requires at least three distinct dates, gives each batch one point regardless of size, and resamples rows within batches to form percentile slope intervals. Deterioration is flagged only when the interval is wholly below zero. This is a descriptive trend, not causal attribution; case-mix changes, unequal uncertainty, serial dependence, and delayed or biased labels are not adjusted.
+
+\subsection{Explanations and reason audit}
+For a model output \(f\), a Shapley attribution for feature \(j\) averages its marginal contribution over feature coalitions \(S\):
+\[
+\begin{aligned}
+\phi_j(f,x)
+&=\sum_{S\subseteq F\setminus\{j\}}
+\frac{|S|!(d-|S|-1)!}{d!}\\
+&\qquad\cdot\left[v_x(S\cup\{j\})-v_x(S)\right].
+\end{aligned}
+\]
+The implementation estimates interventional contributions by Monte Carlo feature permutations and background-row replacement. Its local weighted linear surrogate follows the LIME objective \(\arg\min_g\sum_z\pi_x(z)(f(z)-g(z))^2+\Omega(g)\), implemented with finite numerical perturbations and a small ridge term \cite{lundberg2017,ribeiro2016}. Background choice, correlated features, and perturbation realism affect both outputs.
+
+The reason audit adds holdout accuracy, multiclass Brier loss and top-label expected calibration error; donor-perturbation changes in Brier loss; optional group/time stability slices; user-supplied counterfactual sensitivity; standardized logistic associations; and explanation alignment. A positive loss increase indicates model reliance under that perturbation scheme, not causal importance. Counterfactuals must be domain-valid. The report explicitly warns that associations, reliance, and agreement do not prove causal or normatively valid reasons.
+
+\section{Evaluation protocol and evidence}
+An empirical study of the integrated workflow should use multiple domains and prespecified outer train/test or temporal/site partitions, report class prevalence and missingness, and compare the meta-learning candidates with transparent base-model and conventional-stacking baselines. All preprocessing, feature selection, resampling, hyperparameter selection, and ATTP split optimization must be restricted to the training side of each outer comparison. Resampling, where studied, must occur inside training folds only. Report discrimination, calibration, subgroup counts and rates, input-shift statistics, confidence intervals, run-time, and failures. Use paired comparisons at the independent dataset or outer-resample level, correct for multiplicity where appropriate, and provide code, seeds, data provenance, and a complete experiment matrix.
+
+No such integrated benchmark or empirical superiority result is asserted in this manuscript. The prior ATTP paper and proposal contain separate exploratory results and research plans; those figures are not reproduced here as independently verified evidence. Software tests establish expected behavior on test cases, not external validity.
+
+\section{Operational limitations and responsible interpretation}
+ATTP is a separate optional dependency for users who choose to use its partitioning methods. The current S-ATTP implementation accepts finite numeric features, fits LDA and clustering before candidate splitting, and selects a split using a score on its candidate test subset; that score is not an unbiased final performance estimate. The current ATTP implementation does not provide the broader 21-algorithm taxonomy described in the separate reference architecture document; that taxonomy must not be described as implemented without code and validation.
+
+ReliableML's prediction-time drift analysis does not need labels. Classification evaluation, calibration, and fairness require outcomes (and fairness also requires protected groups). Deterioration requires multiple dated labeled batches. The reason audit requires labeled holdout data and background observations; explanation calls can use unlabeled inputs. Missingness, dependent rows, shifting label practices, representation changes, small subgroups, privacy, and action thresholds remain domain responsibilities. Saved Python pickle artifacts can execute code when loaded and must come only from trusted sources.
+
+\section{Conclusion}
+The proposed statistical workflow treats reliability as a structured body of evidence across data preparation, model fitting, and operation. ATTP supports cluster- and class-aware partition selection; cross-fitted meta-learning constructs higher-level classifiers; and ReliableML reports reference shift and complementary outcome-dependent analyses. The distinction between unlabeled monitoring and labeled validation is essential: distribution similarity is not predictive confidence, and no single fairness, explanation, or trend statistic certifies reliability. Rigorous outer validation, transparent assumptions, and empirical study across target domains remain prerequisites for claims about performance or generalizability.
+
+\begin{thebibliography}{99}
+\bibitem{arlot2010} S. Arlot and A. Celisse, ``A survey of cross-validation procedures for model selection,'' \emph{Statistics Surveys}, vol. 4, pp. 40--79, 2010.
+\bibitem{chouldechova2017} A. Chouldechova, ``Fair prediction with disparate impact: A study of bias in recidivism prediction instruments,'' \emph{Big Data}, vol. 5, no. 2, pp. 153--163, 2017.
+\bibitem{gama2014} J. Gama, I. Zliobaite, A. Bifet, M. Pechenizkiy, and A. Bouchachia, ``A survey on concept drift adaptation,'' \emph{ACM Computing Surveys}, vol. 46, no. 4, 2014.
+\bibitem{hardt2016} M. Hardt, E. Price, and N. Srebro, ``Equality of opportunity in supervised learning,'' in \emph{Advances in Neural Information Processing Systems}, 2016.
+\bibitem{kohavi1995} R. Kohavi, ``A study of cross-validation and bootstrap for accuracy estimation and model selection,'' in \emph{Proc. 14th Int. Joint Conf. Artificial Intelligence}, 1995, pp. 1137--1143.
+\bibitem{lundberg2017} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
+\bibitem{ribeiro2016} M. T. Ribeiro, S. Singh, and C. Guestrin, ``Why should I trust you?: Explaining the predictions of any classifier,'' in \emph{Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining}, 2016, pp. 1135--1144.
+\bibitem{wolpert1992} D. H. Wolpert, ``Stacked generalization,'' \emph{Neural Networks}, vol. 5, no. 2, pp. 241--259, 1992.
+\bibitem{mcc} D. R. Matthews, ``Comparison of the predicted and observed secondary structure of T4 phage lysozyme,'' \emph{Biochimica et Biophysica Acta}, vol. 405, no. 2, pp. 442--451, 1975.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

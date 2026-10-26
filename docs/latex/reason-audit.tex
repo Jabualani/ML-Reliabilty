@@ -1,0 +1,71 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\title{A Statistical Holdout Audit of Predictive Validity, Feature Reliance, and Explanation Stability}
+\author{
+\jabulaniauthor
+\and
+\martinchanzauthor
+\and
+\oloratoauthor
+\and
+\mfundoauthor
+}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+ReliableML's reason audit combines outcome validation with diagnostics of model reliance and explanation stability on labeled holdout data. It reports bootstrap accuracy, multiclass Brier loss and top-label calibration error; donor-perturbation changes in predictive loss; optional group/time slices; user-supplied counterfactual sensitivity; standardized logistic associations; and alignment between explanations and statistical associations. This paper defines these quantities and their assumptions. The audit is designed to surface potential shortcuts and fragile explanations, not to prove a model uses correct, fair, or causal reasons. Its conclusions depend on holdout representativeness, valid labels, perturbation design, and domain knowledge.
+\end{abstract}
+
+\begin{IEEEkeywords}
+model auditing, predictive validity, feature reliance, counterfactual sensitivity, calibration, bootstrap
+\end{IEEEkeywords}
+
+\section{Introduction}
+A model can have high average accuracy yet rely on unstable or unavailable features. Conversely, an influential feature need not be spurious or normatively inappropriate. A defensible audit therefore combines outcome-based evaluation with model-behavior diagnostics and clearly separates association from causation \cite{pearl2009}. The implementation requires a fitted classifier exposing \code{predict}, \code{predict\_proba}, and \code{classes\_}, finite numeric data, labeled observations, and a reference background \cite{software}. It is a statistical diagnostic bundle, not an automated causal audit.
+
+\section{Holdout predictive validity}
+For \(n\) labeled audit rows, predicted probabilities \(p_i\) and one-hot labels \(e_{y_i}\) yield multiclass Brier score
+\[
+B=\frac1n\sum_{i=1}^n\|p_i-e_{y_i}\|_2^2.
+\]
+The audit also reports accuracy and top-label expected calibration error with ten equal-width confidence bins:
+\[
+\operatorname{ECE}=\sum_{b=1}^{10}\frac{|I_b|}{n}
+\left|\operatorname{acc}(I_b)-\operatorname{conf}(I_b)\right|.
+\]
+Here \(\operatorname{conf}(I_b)\) is the mean maximum predicted probability and \(\operatorname{acc}(I_b)\) is the fraction correct among rows assigned to bin \(b\). Row bootstrap intervals are computed for accuracy, Brier score, and ECE. ECE depends on binning and can be noisy; all intervals presume the holdout rows are representative and independently resampled.
+
+\section{Perturbation-based feature reliance}
+Let \(L(f;D)\) denote multiclass Brier loss on labeled holdout data \(D\). For feature \(j\), the audit substitutes donor values into the holdout rows and estimates
+\[
+\Delta_j=\mathbb{E}\left[L(f;D^{(j)})-L(f;D)\right].
+\]
+Positive \(\Delta_j\) means that model loss rises under the specified perturbation. The implementation samples donor values from other audit rows; optionally it chooses nearest donors on user-specified conditioning features, standardizing by their observed standard deviations. It bootstraps rows and repeats donor perturbations to obtain an interval. Without conditioning, marginal replacements can create unrealistic combinations; nearest-neighbor conditioning only approximates the conditional feature distribution and can fail in sparse regions. A positive lower interval bound is evidence of reliance under this perturbation procedure, not of causal effect or feature necessity in the data-generating process.
+
+\section{Stability slices and sensitivity}
+Optional group and time-period variables allow the same reliance calculation within slices. Between-slice variation is descriptive and can be unstable for small groups. The audit also accepts user-supplied feature replacement values and reports prediction-flip rates and mean absolute positive-class probability changes with row-bootstrap intervals. These are counterfactual sensitivity analyses only in the computational sense: replacing one column while holding others fixed is not necessarily a plausible intervention. The user must provide replacements consistent with domain constraints and causal knowledge.
+
+Negative-control and unavailable-at-prediction-time features can be flagged when reliance is positive. Such flags suggest possible leakage or shortcut learning and require investigation; they do not prove it. Data provenance and feature-availability timing should be documented independently.
+
+\section{Associations and explanation alignment}
+The audit fits a standardized logistic association model for the selected positive outcome and reports odds ratios, intervals, p-values, and Benjamini--Hochberg adjusted p-values \cite{benjamini1995}. This estimates conditional associations under the specified logistic form. It is not a causal model and can be affected by confounding, collinearity, separation, or misspecification.
+
+The audit optionally compares SHAP-like row contributions and local surrogate contributions \cite{shap,lime}, logistic log-odds associations, and supplied importance mappings. Rank correlations, sign agreement, and top-feature overlap summarize alignment. Agreement is not independent validation because the methods may share the same fitted model, labels, and artifacts.
+
+\section{Audit protocol and limitations}
+Use labeled holdout data that were not used for fitting, tuning, threshold choice, or explanation design. The background should represent the intended reference population and be kept distinct from the audit sample when feasible. Prespecify positive labels, subgroups, time slices, bootstrap settings, perturbation variables, and domain-valid counterfactuals. Report row counts, missingness, class prevalence, group denominators, warning messages, and computation settings. For repeated entities or temporal dependence, use a design-appropriate clustered or block method rather than interpreting independent-row intervals.
+
+The audit cannot establish that a model is correct for the right reasons. Accuracy and calibration are sample-specific; perturbation reliance is model- and distribution-specific; associations are not interventions; and explanation agreement is not causal evidence. No module supplies counterfactual outcome identification or a structural causal model.
+
+\section{Conclusion}
+ReliableML's reason audit makes several distinct pieces of holdout evidence available in one report. Its main scientific value is to expose assumptions and potential failure modes for human investigation, not to collapse validity, fairness, reliance, and explanation into a single score. Claims should be limited to the supplied sample and procedures.
+
+\begin{thebibliography}{9}
+\bibitem{shap} S. M. Lundberg and S.-I. Lee, ``A unified approach to interpreting model predictions,'' in \emph{Advances in Neural Information Processing Systems}, 2017.
+\bibitem{lime} M. T. Ribeiro, S. Singh, and C. Guestrin, ``Why should I trust you?: Explaining the predictions of any classifier,'' in \emph{Proc. 22nd ACM SIGKDD Int. Conf. Knowledge Discovery and Data Mining}, 2016, pp. 1135--1144.
+\bibitem{benjamini1995} Y. Benjamini and Y. Hochberg, ``Controlling the false discovery rate: A practical and powerful approach to multiple testing,'' \emph{Journal of the Royal Statistical Society: Series B}, vol. 57, no. 1, pp. 289--300, 1995.
+\bibitem{pearl2009} J. Pearl, \emph{Causality: Models, Reasoning, and Inference}, 2nd ed. Cambridge University Press, 2009.
+\bibitem{software} J. Monchwe, O. Motitswane, and M. Monchwe, \emph{ReliableML}, software, version 0.1.1, 2026. \projecturl.
+\end{thebibliography}
+\end{document}

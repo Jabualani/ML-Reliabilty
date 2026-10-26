@@ -1,0 +1,209 @@
+\documentclass[conference]{IEEEtran}
+\input{preamble}
+\usepackage{array}
+\title{StatCore Nearest Neighbours: Exact Baselines, Prototype Compression, Diagonal Metric Learning, and Data-Adaptive $k$}
+\author{\jabulaniauthor \and \martinchanzauthor \and \oloratoauthor \and \mfundoauthor}
+\hypersetup{pdfauthor={Jabulani Monchwe, Martin Chanza, Olorato Motitswane, and Mfundo Monchwe}}
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This paper specifies the pure-NumPy StatCore $k$-nearest-neighbour (KNN) classifier and regressor as implemented, including their common standardisation and voting rule and the complete \code{base}, \code{prototype\_compressed}, \code{learnable\_metric}, and \code{stat\_k\_selection} branches. The method-specific names denote concrete implementation choices rather than a claim of novelty or general superiority. In particular, the metric-learning branch uses a diagonal nonnegative metric and, despite the intended neighbourhood-components interpretation, includes each sampled observation itself among its soft neighbours; the selection branch is exact leave-one-out scoring but standardises once on the complete training set. These details matter for interpreting both the gradients and the validation evidence. Reproducible experiments compare all StatCore variants with scikit-learn KNN as a standard reference on nonlinear, noisy, irrelevant-feature data and the bundled Breast Cancer Wisconsin and Diabetes datasets over three predefined splits. We report accuracy, log loss, equal-width expected calibration error (ECE), regression losses, and elapsed fit-plus-prediction time, and explicitly retain cases in which the variants do not improve on the standard baseline.
+\end{abstract}
+
+\begin{IEEEkeywords}
+nearest neighbours, prototype compression, diagonal Mahalanobis distance, metric learning, model selection, reliability
+\end{IEEEkeywords}
+
+\section{Introduction}
+Nearest-neighbour prediction is a nonparametric method whose decisions depend directly on a representation, a distance, a neighbourhood size, and an aggregation rule \cite{cover1967,fix1951}. StatCore supplies a NumPy-only implementation for classification and scalar regression. Its variants alter four distinct components: the reference set, the distance geometry, or the integer neighbourhood size. This paper's contribution is an implementation-level mathematical specification and a reproducible finite benchmark, not a new consistency result or a universal performance claim.
+
+The exact source of record is \code{src/ml\_reliability/statcore/knn/knn.py}; shared validation, standardisation, and distance helpers are in \code{statcore/\_common.py}. The package contract is recorded in \code{statcore/SPEC.md}. Scikit-learn appears only in the experiment script as a standard baseline and as a source of bundled datasets; all StatCore estimators and proposed variants are NumPy implementations.
+
+\section{Notation and common implementation}
+Let $X\in\mathbb{R}^{n\times d}$ and $y=(y_i)_{i=1}^n$. The classifier obtains sorted unique labels $\mathcal C=(c_1,\ldots,c_C)$ using \code{numpy.unique}, encodes each target as one-hot $t_i\in\{0,1\}^C$, and requires $C\geq2$. The regressor requires finite numeric scalar responses and stores $t_i=y_i$ as a one-column matrix. Inputs are converted to finite floating point, must be two-dimensional with at least one feature, and training requires at least two observations. Prediction checks the fitted flag and feature count.
+
+For each feature $j$, the scaler stores the training mean $\mu_j=n^{-1}\sum_i x_{ij}$ and population standard deviation $s_j=\sqrt{n^{-1}\sum_i(x_{ij}-\mu_j)^2}$. It substitutes $1$ when $s_j\leq10^{-12}$. Thus $z_{ij}=(x_{ij}-\mu_j)/\max(s_j,1\text{ if }s_j\leq10^{-12})$. The pairwise squared distance is evaluated using norms and matrix multiplication, then clipped below at zero to suppress small negative round-off:
+\begin{equation}
+ d^2(z,z')=\max\{\|z\|_2^2+\|z'\|_2^2-2z^\top z',0\}.
+ \label{eq:dist}
+\end{equation}
+This scaler is fitted once on all fit-time rows, before any KNN-specific selection. At inference, query vectors use the saved training scaler.
+
+For query $q$, let $\mathcal N_k(q)$ be the first $\min(k,r)$ indices in a stable ascending sort of squared distances to $r$ references. If the stored reference weight for reference $j$ is $v_j>0$, the unnormalised vote weight is
+\begin{align}
+ u_{qj}&=\begin{cases}
+ v_j,&\texttt{weights=uniform},\\
+ v_j/(\sqrt{d^2(q,z_j)}+10^{-9}),&\texttt{weights=distance},
+ \end{cases}\\
+ \alpha_{qj}&=u_{qj}/\max\!\left(\sum_{\ell\in\mathcal N_k(q)}u_{q\ell},10^{-300}\right).
+ \label{eq:vote}
+\end{align}
+The prediction vector is $\hat t_q=\sum_{j\in\mathcal N_k(q)}\alpha_{qj}t_j$. Class probabilities are these normalized class votes; they are not passed through a softmax and are not calibrated by a separate procedure. Class labels use the first maximum in sorted \code{classes\_}. Regression returns the sole target component. If $k$ exceeds the reference count, it is silently capped. With zero-distance duplicates, distance weights remain finite due to $10^{-9}$; a zero-feature-variance column contributes zero after scaling.
+
+\section{Reference method: standard KNN}
+\label{sec:standard}
+The \code{base} variant stores every scaled training row and its target, sets the diagonal metric to $\mathbf 1_d$, and uses the constructor's positive integer \code{n\_neighbors} (default $k=5$). It supports \code{weights=uniform} (default) and \code{weights=distance}. This is the standard local vote/mean rule in (\ref{eq:vote}), not a learned bandwidth or a probabilistic generative model. Its inductive bias is local smoothness in standardized Euclidean coordinates; irrelevant or differently informative features can distort neighbourhoods despite marginal standardisation.
+
+\section{Implemented own variants}
+\subsection{Per-class prototype compression}
+For \code{variant=prototype\_compressed}, let $\rho=\texttt{compression}\in(0,1]$ (default $0.2$). In classification, each class $c$ is clustered separately in scaled feature space. For class index set $I_c$, the requested cluster count is $m_c=\max(1,\lceil\rho |I_c|\rceil)$. If $m_c\geq |I_c|$, the class's original observations are retained with unit reference weights. Otherwise, the implementation runs StatCore KMeans with \code{variant=better\_init}, \code{n\_init=2}, \code{max\_iter=50}, and the supplied \code{random\_state}. For each nonempty cluster $G$, it stores the feature centroid $|G|^{-1}\sum_{i\in G}z_i$, mean one-hot target $|G|^{-1}\sum_{i\in G}t_i$, and reference weight $v_G=|G|$. Weighting the centroid target by its cluster size preserves the cluster's total class mass under uniform votes, although it does not make the compressed geometry equivalent to the original sample geometry.
+
+For regression, all rows form one cluster partition. KMeans is run in the augmented space $[z_i,\tilde y_i]$, where $\tilde y_i=(y_i-\bar y)/(s_y+10^{-12})$ and $s_y$ is the population standard deviation. Only the $z$ coordinates of each cluster centroid are retained as reference features; its target is the cluster's mean original-scale $y$, and its reference weight is cluster size. This target-informed clustering can alter both the locations and target averages, and can be optimistic if assessed on data that influenced prototype construction. Prediction then applies (\ref{eq:vote}) over the reduced references, with cluster-size multiplicity represented by $v_G$.
+
+\subsection{Learnable diagonal metric}
+\label{sec:metric}
+The \code{learnable\_metric} branch retains all training rows but learns a positive diagonal scaling. To bound computation, a seeded random permutation selects $m=\min(n,400)$ observations. Write their standardized features as $z_i$ and squared coordinate differences as $D_{ij\ell}=(z_{i\ell}-z_{j\ell})^2$. The parameters are log-weights $\theta_\ell$, initialized to $\log(1/d)$, and $a_\ell=\exp(\theta_\ell)$. The soft neighbour distribution is
+\begin{equation}
+ P_{ij}(a)=\frac{\exp(-\sum_{\ell=1}^d a_\ell D_{ij\ell})}{\sum_{r=1}^{m}\exp(-\sum_{\ell=1}^d a_\ell D_{ir\ell})},\quad
+ E_{i\ell}=\sum_jP_{ij}D_{ij\ell}.
+ \label{eq:soft}
+\end{equation}
+There is no diagonal mask in this calculation: $D_{ii\ell}=0$ and the query itself is one of its candidates. In classification, $S_{ij}=\mathbb{1}[y_i=y_j]$, $q_i=\sum_jP_{ij}S_{ij}$, and the minimized objective is $L_{\rm cls}=-m^{-1}\sum_iq_i$. Differentiating the softmax gives
+\begin{align}
+ \frac{\partial P_{ij}}{\partial a_\ell}&=P_{ij}(-D_{ij\ell}+E_{i\ell}),\\
+ \frac{\partial q_i}{\partial a_\ell}&=-\sum_jP_{ij}S_{ij}D_{ij\ell}+q_iE_{i\ell},\\
+ \frac{\partial L_{\rm cls}}{\partial a_\ell}&=m^{-1}\sum_i(A_{i\ell}-q_iE_{i\ell}),\quad A_{i\ell}=\sum_jP_{ij}S_{ij}D_{ij\ell}.
+ \label{eq:clsgrad}
+\end{align}
+This is exactly the implemented gradient. Since $\partial a_\ell/\partial\theta_\ell=a_\ell$, the log-coordinate gradient is $g_{\theta,\ell}=a_\ell\partial L/\partial a_\ell$.
+
+For regression, responses in the sampled subset are standardized as $r_i=(y_i-\bar y_s)/(s_s+10^{-12})$. The soft estimate is $\hat r_i=\sum_jP_{ij}r_j$, and the loss is $L_{\rm reg}=m^{-1}\sum_i(\hat r_i-r_i)^2$. Its derivative is
+\begin{align}
+ \frac{\partial\hat r_i}{\partial a_\ell}&=-\sum_jP_{ij}(r_j-\hat r_i)D_{ij\ell},\\
+ \partial_{a_\ell}L_{\rm reg}&=\frac{2}{m}\sum_i(\hat r_i-r_i)\,\partial_{a_\ell}\hat r_i.
+ \label{eq:reggrad}
+\end{align}
+The implementation applies Adam to $\theta$, with $\beta_1=0.9$, $\beta_2=0.999$, bias correction, $\epsilon=10^{-8}$, and learning rate \code{metric\_lr} (default $0.1$); after every update it clips each $\theta_\ell$ to $[-8,3]$. It performs \code{metric\_iters} iterations (default $60$), with no objective regularizer or validation split. Finally $a$ is normalized by its arithmetic mean, $a\leftarrow a/\bar a$, and prediction distances use $\sum_\ell a_\ell(z_\ell-z'_\ell)^2$. Normalization fixes the arbitrary global distance scale for the finite-temperature softmax, though here inference uses hard neighbours. The implementation is a diagonal, in-sample soft-neighbour heuristic, not full-matrix NCA or large-margin metric learning.
+
+The self-candidate is consequential: it contributes a zero-distance, same-label term in classification and the exact target in regression, making the sampled training objective easier than a leave-one-out objective. The docstring's intended leave-one-out description is therefore not what this code computes. No claim of generalization follows from minimizing this self-inclusive objective.
+
+\subsection{Leave-one-out statistical $k$ selection}
+\label{sec:selection}
+For \code{variant=stat\_k\_selection}, the estimator constructs a full $n\times n$ squared-distance matrix after standardizing all $n$ fit-time rows, then sets its diagonal to $+\infty$. It uses unit reference weights and evaluates candidates using exact leave-one-out neighbours, without a fold-specific scaler. The default candidate list is the odd integers $1,3,\ldots$ not exceeding $\min(31,n-1)$. A user-supplied \code{k\_grid} is converted elementwise to integers and filtered to $1\leq k\leq n-1$; an empty valid list raises \code{ValueError}. For classification,
+\begin{align}
+ J_{\rm cls}(k)&=1-\frac1n\sum_i\mathbb{1}[\arg\max_c\hat p_{ic}(k)=y_i]\\
+ &\quad+10^{-3}\frac1n\sum_i-\log\!\left(\max\{\hat p_{i,y_i}(k),10^{-3}\}\right).
+ \label{eq:kcls}
+\end{align}
+where $\hat p_{ic}$ follows the selected uniform or distance weighting. For regression, $J_{\rm reg}(k)=n^{-1}\sum_i(\hat y_i(k)-y_i)^2$. The first candidate attaining the minimum is selected; a later score must improve by more than $10^{-12}$ to replace it. Scores are retained in \code{cv\_scores\_}; $k_\star$ replaces \code{n\_neighbors} for prediction on the complete training reference set. This is a validation heuristic over the training sample, not an unbiased external estimate. In particular, the global training scaler has seen every candidate row, albeit without labels.
+
+\begin{table*}[t]
+\centering
+\small\setlength{\tabcolsep}{3pt}
+\caption{Variant comparison, with implementation-specific operations.}
+\label{tab:variants}
+\begin{tabular}{p{0.18\textwidth}p{0.26\textwidth}p{0.26\textwidth}p{0.20\textwidth}}
+\toprule
+Method & Classifier & Regressor & Extra computation / principal caveat\\
+\midrule
+Standard reference & \code{base}: scaled Euclidean neighbours; class vote & \code{base}: scaled Euclidean neighbours; target average & Stores $n$ references; feature relevance is not learned\\
+Prototype compression & Classwise KMeans; centroid targets and cluster-count weights & KMeans on scaled $X$ plus standardized target; retain feature and target means & Reduced inference set; cluster approximation can erase local structure\\
+Learnable metric & Maximize self-inclusive soft same-class mass under diagonal metric & Minimize self-inclusive soft prediction MSE under diagonal metric & At most 400 samples, 60 Adam steps by default; not true LOO training\\
+Statistical $k$ selection & Choose $k$ by LOO error plus $10^{-3}$ clipped log-loss & Choose $k$ by LOO MSE & $O(n^2)$ distance storage; preprocessing remains full-sample\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Algorithms}
+The following compact procedures make branch order explicit. Lines named ``shared'' apply to both tasks; task-specific targets are specified above.
+\subsection{Fit and prediction}
+\begin{enumerate}
+\item Validate finite numeric $X$, aligned one-dimensional $y$, at least two training rows, positive integer $k$, $0<\rho\leq1$, and a recognized variant/weighting.
+\item For classification, set sorted \code{classes\_} and one-hot $T$; reject a single class. For regression, check and cast the scalar targets.
+\item Fit the population-statistic scaler on $X$, transform to $Z$, initialize $a=\mathbf1$ and $k_\star=\texttt{n\_neighbors}$.
+\item If \code{learnable\_metric}, run the seeded diagonal-metric procedure in Section~\ref{sec:metric}; transform stored features by $\sqrt a$.
+\item If \code{stat\_k\_selection}, run the diagonal-masked LOO criterion in Section~\ref{sec:selection} and replace $k_\star$ with its minimizer.
+\item If \code{prototype\_compressed}, perform task-specific clustering and replace $(Z,T)$ by nonempty prototype means with their cluster-size weights; otherwise retain every observation with unit weights.
+\item Store references, targets, weights, $a$, $k_\star$, feature count, and fitted flag. For a query, validate dimensions, scale and apply $\sqrt a$, compute all reference distances, stably sort, and return the normalized weighted target average (\ref{eq:vote}).
+\end{enumerate}
+
+\subsection{Metric optimization}
+\begin{enumerate}
+\item Draw a seeded random permutation and retain its first $m=\min(n,400)$ rows; build $D_{ij\ell}$ and initialize $\theta_\ell=\log(1/d)$, first moments $u=0$, second moments $v=0$.
+\item At each $t=1,\ldots,\texttt{metric\_iters}$, compute $a=\exp(\theta)$, scores $-\sum_\ell a_\ell D_{ij\ell}$, their stabilized softmax $P$, and $E$ from (\ref{eq:soft}); do not exclude the self entry.
+\item Calculate the classifier gradient (\ref{eq:clsgrad}) or regressor gradient (\ref{eq:reggrad}), then chain it to $\theta$ by elementwise multiplication with $a$.
+\item Update $u_t=0.9u_{t-1}+0.1g_t$, $v_t=0.999v_{t-1}+0.001g_t^2$, bias-correct both, and set $\theta\leftarrow\operatorname{clip}(\theta-\eta\hat u/(\sqrt{\hat v}+10^{-8}),-8,3)$.
+\item Return $a/\operatorname{mean}(a)$ and use the resulting diagonal metric for the hard-neighbour stage.
+\end{enumerate}
+
+\section{Assumptions, complexity, and edge cases}
+The constructor defaults are \code{n\_neighbors=5}, \code{variant=base}, \code{weights=uniform}, \code{compression=0.2}, \code{k\_grid=None}, \code{metric\_iters=60}, \code{metric\_lr=0.1}, and \code{random\_state=0}. The default candidate grid is defined in Section~\ref{sec:selection}. The code explicitly checks the variant, weight name, compression interval, and positive-integer neighbor count at fit; it does not range-check metric iterations or learning rate. A user-supplied grid is integer-converted and filtered only for statistical selection, and raises only when no entries remain valid.
+
+All algorithms assume rows are exchangeable for the benchmark split and that Euclidean proximity after marginal scaling is meaningful. The diagonal metric cannot represent feature interactions or rotations. The learned-metric loss is self-inclusive and optimized on the training subset; the selected-$k$ score is training-set LOO but does not refit preprocessing within each held-out fold. Prototype compression changes the support and can bias boundaries or smooth nonlinear regression. Distance-weighted estimates can be dominated by a near-duplicate; the $10^{-9}$ term prevents division by zero but is not an uncertainty model. Class ties resolve to the first sorted class. A request for $k$ larger than the available references uses all references; selected $k$ is always at most $n-1$ when the default or filtered grid is used. Constant features are preserved at zero scaled value. Inputs with NaN or infinity, dimension mismatch, nonpositive or noninteger initial $k$, invalid compression, invalid weighting, one-class classification, or an empty valid $k$ grid fail explicitly.
+
+For query batch size $q$, $r$ stored references, and $d$ features, distance computation is $O(qrd)$ time and $O(qr)$ distance storage; full stable sorting costs $O(qr\log r)$, plus $O(qkC)$ vote aggregation. Standard fit stores $O(nd)$ features and $O(nC)$ targets (or $O(n)$ scalar targets). Prototype clustering uses implementation-dependent KMeans iterations; storage after compression is $O(r d+rC)$ with $r\leq n$ and often substantially smaller. Metric learning explicitly materializes $D\in\mathbb R^{m\times m\times d}$ and repeatedly performs $O(m^2d)$ operations, thus $O(m^2d)$ memory and $O(Tm^2d)$ time for $T$ iterations. Although $m\leq400$, large $d$ still incurs cubic-in-$m$-times-$d$-scale storage. LOO $k$ selection stores $O(n^2)$ distances and invokes a stable sort for each candidate, costing approximately $O(n^2d+|\mathcal K|n^2\log n)$.
+
+\section{Empirical evaluation}
+\subsection{Protocol}
+The script \url{docs/latex/experiments/knn_experiment.py} (with \code{\_experiment\_utils.py}) is the executable specification of this experiment. From the repository root run \code{python docs/latex/experiments/knn\_experiment.py} using the project venv. It evaluates classification and regression separately on (i) a 640-row nonlinear synthetic sample with two informative coordinates, 18 independent Gaussian irrelevant features, label flips at probability $0.10$ or Gaussian response noise with standard deviation $0.30$, and (ii) the bundled scikit-learn Breast Cancer Wisconsin classification or Diabetes regression data. Each dataset uses 75/25 train/test splits for seeds 11, 23, and 47. The synthetic task is regenerated per seed. Splits are generated in NumPy: the test count is $\lceil0.25n\rceil$; classification allocates proportional per-class counts by floors plus largest fractional remainders (seeded tie-breaking), permutes within each class, and shuffles the combined partitions; regression uses a seeded permutation. Every reported cell is the mean and sample standard deviation over these three runs.
+
+Scikit-learn is used strictly for the standard comparison estimator (scaled uniform $k=5$ KNN) and bundled dataset access. The StatCore comparisons are its \code{base} and all three own variants. All methods use uniform votes in this benchmark. Own-variant settings are $\rho=0.35$, 40 metric steps, learning rate $0.1$, and the default $k$ grid; the benchmark's fixed \code{n\_neighbors=5} is used only where applicable. Classification metrics are accuracy, natural-log cross-entropy (probabilities clipped and row-normalized for metric calculation), and 15-bin equal-width ECE, $\sum_b(n_b/N)|\operatorname{acc}(b)-\operatorname{conf}(b)|$. Regression reports MSE, MAE, and $R^2$. Each estimator receives one untimed warm-up fit and test prediction on that same training split; runtime is the subsequent wall-clock fit plus test prediction, excluding dataset generation and metric aggregation. No hyperparameter is chosen using the test set; results characterize these fixed settings and splits rather than an inferential population guarantee.
+
+\subsection{Classification results}
+Table~\ref{tab:class-results} records the measured values from the script. A cell is mean $\pm$ sample standard deviation; time is seconds. Values are intentionally not generalized beyond the datasets and seeds.
+\begin{table*}[t]
+\centering
+\small\setlength{\tabcolsep}{3pt}
+\caption{Classification: accuracy, log loss, 15-bin ECE, and fit-plus-predict time (mean $\pm$ SD, three seeds).}
+\label{tab:class-results}
+\begin{tabular}{llrrrr}
+\toprule
+Dataset & Method & Accuracy & Log loss & ECE & Time (s)\\
+\midrule
+Synthetic & sklearn standard & $0.5646\pm0.0452$ & $1.2460\pm0.1257$ & $0.1254\pm0.0423$ & $0.0116\pm0.0019$\\
+Synthetic & StatCore base & $0.5646\pm0.0452$ & $1.2460\pm0.1257$ & $0.1254\pm0.0423$ & $0.0060\pm0.0012$\\
+Synthetic & prototype compressed & $0.5750\pm0.0375$ & $0.8103\pm0.0511$ & $0.1206\pm0.0382$ & $0.0473\pm0.0126$\\
+Synthetic & learnable metric & $0.5583\pm0.0253$ & $1.8623\pm0.6171$ & $0.1517\pm0.0166$ & $0.6717\pm0.1421$\\
+Synthetic & statistical $k$ selection & $0.5792\pm0.0940$ & $0.6730\pm0.0346$ & $0.0874\pm0.0298$ & $0.2673\pm0.0156$\\
+Breast cancer & sklearn standard & $0.9464\pm0.0246$ & $0.2255\pm0.1370$ & $0.0219\pm0.0127$ & $0.0143\pm0.0028$\\
+Breast cancer & StatCore base & $0.9464\pm0.0246$ & $0.2255\pm0.1370$ & $0.0219\pm0.0127$ & $0.0057\pm0.0007$\\
+Breast cancer & prototype compressed & $0.9510\pm0.0140$ & $0.3617\pm0.1152$ & $0.0397\pm0.0176$ & $0.0754\pm0.0146$\\
+Breast cancer & learnable metric & $0.9324\pm0.0225$ & $0.1153\pm0.0147$ & $0.0289\pm0.0082$ & $0.8329\pm0.0709$\\
+Breast cancer & statistical $k$ selection & $0.9464\pm0.0246$ & $0.3372\pm0.1190$ & $0.0246\pm0.0102$ & $0.2080\pm0.0442$\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Regression results}
+\begin{table*}[t]
+\centering
+\small\setlength{\tabcolsep}{3pt}
+\caption{Regression: MSE, MAE, $R^2$, and fit-plus-predict time (mean $\pm$ SD, three seeds).}
+\label{tab:reg-results}
+\begin{tabular}{llrrrr}
+\toprule
+Dataset & Method & MSE & MAE & $R^2$ & Time (s)\\
+\midrule
+Synthetic & sklearn standard & $0.5789\pm0.0813$ & $0.6128\pm0.0563$ & $0.2957\pm0.0229$ & $0.0123\pm0.0032$\\
+Synthetic & StatCore base & $0.5789\pm0.0813$ & $0.6128\pm0.0563$ & $0.2957\pm0.0229$ & $0.0060\pm0.0014$\\
+Synthetic & prototype compressed & $0.5650\pm0.1034$ & $0.6063\pm0.0555$ & $0.3135\pm0.0715$ & $0.0894\pm0.0515$\\
+Synthetic & learnable metric & $0.1383\pm0.0218$ & $0.2980\pm0.0295$ & $0.8279\pm0.0470$ & $0.6512\pm0.2266$\\
+Synthetic & statistical $k$ selection & $0.5402\pm0.0684$ & $0.5929\pm0.0463$ & $0.3421\pm0.0103$ & $0.2211\pm0.0449$\\
+Diabetes & sklearn standard & $4028.9521\pm366.8942$ & $50.4348\pm1.0521$ & $0.3095\pm0.0986$ & $0.0047\pm0.0029$\\
+Diabetes & StatCore base & $4028.9521\pm366.8942$ & $50.4348\pm1.0521$ & $0.3095\pm0.0986$ & $0.0032\pm0.0006$\\
+Diabetes & prototype compressed & $3766.8309\pm482.5068$ & $50.6118\pm1.6040$ & $0.3540\pm0.1103$ & $0.0406\pm0.0154$\\
+Diabetes & learnable metric & $3583.6096\pm538.1745$ & $48.5502\pm1.3647$ & $0.3859\pm0.1099$ & $0.1990\pm0.0146$\\
+Diabetes & statistical $k$ selection & $3665.1121\pm534.7023$ & $49.3741\pm4.2763$ & $0.3764\pm0.0692$ & $0.1007\pm0.0099$\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Observed differences should be read alongside these limitations: only one fixed split per seed is used; ECE is bin-dependent and noisy on small test sets; KNN probabilities are vote fractions rather than calibrated likelihoods; and the self-inclusive metric objective is a training objective, not held-out evidence. Prototype reduction trades reference memory and query cost against an approximation. No method is assumed to win on every task; the tables preserve negative as well as positive comparisons.
+
+\section{Reproducibility and reporting limitations}
+The scripts print the exact mean and sample SD rather than embedding generated or hand-selected numbers in code. They use the installed NumPy and scikit-learn versions, a fixed seed list, deterministic model random states, and fixed hyperparameters. Runtime is hardware-, BLAS-, and load-dependent. The bundled datasets are small and do not constitute a broad benchmark; these experiments do not quantify uncertainty over datasets, provide nested tuning, test temporal or group shifts, or establish calibration under deployment shift. Regression reliability intervals are not provided by KNN. A stronger study would pre-register datasets and metrics, compare nested validation to a locked external test, include high-dimensional and imbalanced regimes, report peak memory, and correct for multiple benchmark comparisons.
+
+\section{Conclusion}
+StatCore implements standard scaled Euclidean KNN and three concrete modifications: task-specific cluster prototypes, a bounded diagonal soft-neighbour metric, and a finite-grid exact LOO choice of $k$. This specification distinguishes those algorithms from textbook NCA and foldwise cross-validation where the implementation differs. Benchmark tables must be interpreted as seed-averaged measurements under the stated protocol, not evidence that a named variant is universally more accurate, calibrated, or reliable.
+
+\begin{thebibliography}{9}
+\bibitem{cover1967} T. M. Cover and P. E. Hart, ``Nearest neighbor pattern classification,'' \emph{IEEE Trans. Inf. Theory}, vol. 13, no. 1, pp. 21--27, Jan. 1967.
+\bibitem{fix1951} E. Fix and J. L. Hodges, ``Discriminatory analysis: Nonparametric discrimination, consistency properties,'' USAF School of Aviation Medicine, Randolph Field, TX, Tech. Rep. 4, 1951.
+\bibitem{goldberger2005} J. Goldberger, S. Roweis, G. Hinton, and R. Salakhutdinov, ``Neighbourhood components analysis,'' in \emph{Advances in Neural Information Processing Systems 17}, 2005, pp. 513--520.
+\bibitem{lloyd1982} S. P. Lloyd, ``Least squares quantization in PCM,'' \emph{IEEE Trans. Inf. Theory}, vol. 28, no. 2, pp. 129--137, Mar. 1982.
+\bibitem{james2021} G. James, D. Witten, T. Hastie, and R. Tibshirani, \emph{An Introduction to Statistical Learning: with Applications in R}, 2nd ed. Springer, 2021.
+\bibitem{pedregosa2011} F. Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{J. Mach. Learn. Res.}, vol. 12, pp. 2825--2830, 2011.
+\end{thebibliography}
+\end{document}
+
